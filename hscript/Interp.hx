@@ -145,8 +145,6 @@ class Interp {
 	private function resetVariables() {
 		_variablesNames = [];
 		_variables = [];
-		_publicVariables = [];
-		_staticVariables = [];
 		_customClasses = [];
 		_locals = [];
 
@@ -430,8 +428,6 @@ class Interp {
 
 		Preprocessor.getvars(expr, _variablesNames);
 		_variables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
-		_publicVariables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
-		_staticVariables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
 		_customClasses = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
 		_locals = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
 
