@@ -50,6 +50,7 @@ class Optimizer {
 							newExprs.push(e);
 					}
 				}
+
 				return mk(EBlock(newExprs), s);
 
 			case EIf(econd, e1, e2):
@@ -430,6 +431,7 @@ class Optimizer {
 			default:
 				Sys.println("Unknown expr: " + e);
 		}
+
 		return s;
 	}
 

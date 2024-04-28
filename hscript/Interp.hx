@@ -35,6 +35,7 @@ import haxe.display.Protocol.InitializeResult;
 import haxe.iterators.StringKeyValueIteratorUnicode;
 import hscript.Expr;
 import hscript.utils.UnsafeReflect;
+import haxe.iterators.ArrayIterator;
 
 using StringTools;
 
@@ -92,20 +93,24 @@ class Interp {
 	}
 	public var errorHandler:Error->Void;
 	public var importFailedCallback:Array<String>->Bool;
-	#if haxe3 // Also Applies to 4.0.0 and above
-	public var customClasses:Map<String, Dynamic>;
-	public var variables:Map<String, Dynamic>;
-	public var publicVariables:Map<String, Dynamic>;
-	public var staticVariables:Map<String, Dynamic>;
 
+	public var _variablesNames:Array<String> = [];
+	public var _variables:Array<Dynamic> = [];
+	public var _publicVariables:Array<Dynamic> = [];
+	public var _staticVariables:Array<Dynamic> = [];
+	public var _customClasses:Array<Dynamic> = [];
+	public var _locals:Array<DeclaredVar> = [];
+
+	// !BACKWARDS COMPAT
+	public var customClasses:HScriptVariables;
+	public var variables:HScriptVariables;
+	public var publicVariables:HScriptVariables;
+	public var staticVariables:HScriptVariables;
+
+	#if haxe3
 	public var locals:Map<String, DeclaredVar>;
 	var binops:Map<String, Expr->Expr->Dynamic>;
 	#else
-	public var customClasses:Hash<Dynamic>;
-	public var variables:Hash<Dynamic>;
-	public var publicVariables:Hash<Dynamic>;
-	public var staticVariables:Hash<Dynamic>;
-
 	public var locals:Hash<DeclaredVar>;
 	var binops:Hash<Expr->Expr->Dynamic>;
 	#end
@@ -132,29 +137,23 @@ class Interp {
 	#end
 
 	public function new() {
-		#if haxe3
-		locals = new Map();
-		#else
-		locals = new Hash();
-		#end
 		declared = new Array();
 		resetVariables();
 		initOps();
 	}
 
 	private function resetVariables() {
-		#if haxe3
-		customClasses = new Map<String, Dynamic>();
-		variables = new Map<String, Dynamic>();
-		publicVariables = new Map<String, Dynamic>();
-		staticVariables = new Map<String, Dynamic>();
-		#else
-		customClasses = new Hash();
-		variables = new Hash();
-		publicVariables = new Hash();
-		staticVariables = new Hash();
-		#end
+		_variablesNames = [];
+		_variables = [];
+		_publicVariables = [];
+		_staticVariables = [];
+		_customClasses = [];
+		_locals = [];
 
+		staticVariables = publicVariables = customClasses = variables = new HScriptVariables(this);
+	}
+
+	private function setDefualtVariables() {
 		variables.set("null", null);
 		variables.set("true", true);
 		variables.set("false", false);
@@ -428,6 +427,15 @@ class Interp {
 		locals = new Hash();
 		#end
 		declared = new Array();
+
+		Preprocessor.getvars(expr, _variablesNames);
+		_variables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
+		_publicVariables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
+		_staticVariables = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
+		_customClasses = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
+		_locals = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
+
+		setDefualtVariables();
 		return exprReturn(expr);
 	}
 
@@ -499,6 +507,38 @@ class Interp {
 		#end
 	}
 
+	public function iresolve(id:String, doException:Bool = true):Dynamic {
+		if (id == null)
+			return null;
+		id = StringTools.trim(id);
+		var l = locals.get(id);
+		if (l != null)
+			return l.r;
+
+		for(map in [variables, publicVariables, staticVariables, customClasses])
+			if (map.exists(id))
+				return map.get(id);
+
+		if (_hasScriptObject) {
+			// search in object
+			if (id == "this") {
+				return scriptObject;
+			} else if (_scriptObjectType == SObject && UnsafeReflect.hasField(scriptObject, id)) {
+				return UnsafeReflect.field(scriptObject, id);
+			} else {
+				if (__instanceFields.contains(id)) {
+					return UnsafeReflect.getProperty(scriptObject, id);
+				} else if (__instanceFields.contains('get_$id')) { // getter
+					return UnsafeReflect.getProperty(scriptObject, 'get_$id')();
+				}
+			}
+		}
+		if (doException)
+			error(EUnknownVariable(id));
+		//var v = variables.get(id);
+		return null;
+	}
+
 	public function resolve(id:String, doException:Bool = true):Dynamic {
 		if (id == null)
 			return null;
@@ -509,7 +549,7 @@ class Interp {
 
 		for(map in [variables, publicVariables, staticVariables, customClasses])
 			if (map.exists(id))
-				return map[id];
+				return map.get(id);
 
 		if (_hasScriptObject) {
 			// search in object
@@ -1158,4 +1198,63 @@ class Interp {
 	}
 
 	static inline function b2i(b:Bool) return b ? 1 : 0;
+}
+
+class HScriptVariables {
+	public var parent:Interp;
+	public function new(parent:Interp)
+		this.parent = parent;
+
+	public inline function set(key:String, value:Dynamic) {
+		if (parent._variablesNames.contains(key))
+			parent._variables[parent._variablesNames.indexOf(key)] = value;
+	}
+
+	public inline function get(key:String):Dynamic {
+		if (parent._variablesNames.contains(key))
+			return parent._variables[parent._variablesNames.indexOf(key)];
+		return null;
+	}
+
+	public inline function exists(key:String):Bool {
+		var indx:Int = parent._variablesNames.indexOf(key);
+		return indx != -1 && (key == "null" ? true : parent._variables[indx] != null);
+	}
+		
+	public inline function remove(key:String)
+		parent._variables[parent._variablesNames.indexOf(key)] = null;
+
+	public inline function clear():Void {
+		parent._variablesNames.resize(0);
+		parent._variables.resize(0);
+	}
+
+	public inline function copy():Map<String, Dynamic> {
+		var map:Map<String, Dynamic> = [
+			for (i in 0...parent._variables.length)
+				parent._variablesNames[i] => parent._variables[i]
+		];
+		return map;
+	}
+
+	public inline function iterator():ArrayIterator<Dynamic>
+		return parent._variables.iterator();
+
+	public inline function keys():ArrayIterator<String>
+		return parent._variablesNames.iterator();
+
+	public inline function keyValueIterator() : HScriptVariables {
+		_current = 0;
+		return this;
+	}
+
+	@:noCompletion public var _current:Int = 0;
+	public inline function hasNext():Bool {
+		return _current < parent._variablesNames.length;
+	}
+
+	public inline function next():{key:String, value:Dynamic} {
+		_current++;
+		return {value: parent._variables[_current], key: parent._variablesNames[_current]};
+	}
 }

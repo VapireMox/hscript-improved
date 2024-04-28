@@ -62,8 +62,8 @@ enum Expr
 #end
 {
 	EConst( c : Const );
-	EIdent( v : String );
-	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool );
+	EIdent( v : String , ?vid : Int);
+	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool , ?vid : Int);
 	EParent( e : Expr, ?noOptimize : Bool );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String , ?safe : Bool );
@@ -76,12 +76,12 @@ enum Expr
 	EForKeyValue( v : String, it : Expr, e : Expr, ithv: String);
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );
+	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool , ?fid : Int);
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EMapDecl( type: MapType, keys: Array<Expr>, values: Array<Expr> );
 	EArrayDecl( e : Array<Expr> );
-	ENew( cl : String, params : Array<Expr> );
+	ENew( cl : String, params : Array<Expr> , ?cid : Int);
 	EThrow( e : Expr );
 	ETry( e : Expr, v : String, t : Null<CType>, ecatch : Expr );
 	EObject( fl : Array<ObjectField> );
@@ -92,7 +92,7 @@ enum Expr
 	ECheckType( e : Expr, t : CType );
 
 	EImport( c : String, mode: KImportMode );
-	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String> );
+	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String> , ?cid : Int );
 }
 
 enum KImportMode {

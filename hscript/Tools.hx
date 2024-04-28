@@ -27,7 +27,7 @@ class Tools {
 
 	public static function iter( e : Expr, f : Expr -> Void ) {
 		switch( expr(e) ) {
-		case EConst(_), EIdent(_):
+		case EConst(_), EIdent(_): f(e);
 		case EImport(c, _): f(e);
 		case EClass(_, e, _, _): for( a in e ) f(a);
 		case EVar(_, _, e): if( e != null ) f(e);

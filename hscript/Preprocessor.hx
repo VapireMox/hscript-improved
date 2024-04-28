@@ -144,4 +144,109 @@ class Preprocessor {
 		}
 		return isStringFromCharCodeFixed;
 	}
+
+	public static function processvars(e:Expr, vars:Array<String>) {
+		getvars(e, vars);
+		e = Tools.map(e, function(e) {
+			return switch (expr(e)) {
+				case EIdent(v, _):
+					return mk(EIdent(v, vars.indexOf(v)), e);
+				case EVar(n, t, e, p, s, _):
+					return mk(EVar(n, t, e, p, s, vars.indexOf(n)), e);
+				case EFunction(args, e, n, r, p, s, o, _):
+					return mk(EFunction(args, e, n, r, p, s, o, vars.indexOf(n)), e);
+				case ENew(cl, p, _):
+					return mk(ENew(cl, p, vars.indexOf(cl)), e);
+				case EClass(n, fls, extnd, i, _):
+					return mk(EClass(n, fls, extnd, i, vars.indexOf(n)), e);
+				default: e;
+			};
+		});
+
+		return e;
+	}
+
+	public static function getvars(e:Expr, vars:Array<String>) {
+		// TODO: Use a Tools function to make this cleaner (im too lazy rn) -lunar
+		switch (expr(e)) {
+			case EIdent(v):
+				if (!vars.contains(v))
+					vars.push(v);
+			case EBlock(e):
+				for (expr in e)
+					getvars(expr, vars);
+			case EFunction(_,e,name,_,_,_,_):
+				getvars(e, vars);
+				if (!vars.contains(name))
+					vars.push(name);
+			case ESwitch(e,cases,de):
+				for (c in cases)
+					getvars(c.expr, vars);
+				getvars(de, vars);
+			case EObject(fls):
+				for (fl in fls) getvars(fl.e, vars);
+			case EVar(n, t, e, _,_): 
+				if (!vars.contains(n))
+					vars.push(n);
+				getvars(e, vars);
+			case EIf(c,e1,e2): 
+				getvars(c, vars);
+				getvars(e1, vars);
+				getvars(e2, vars);
+			case EBinop(_,e1,e2):
+				getvars(e1, vars);
+				getvars(e2, vars);
+			case EUnop(_,_,e): getvars(e, vars);
+			case EWhile(c,e):
+				getvars(c, vars);
+				getvars(e, vars);
+			case EDoWhile(e1,e2): 
+				getvars(e1, vars);
+				getvars(e2, vars);
+			case EFor(_,it,e):
+				getvars(it, vars);
+				getvars(e, vars);
+			case EForKeyValue(_,it,e,_): 
+				getvars(it, vars);
+				getvars(e, vars);
+			case EReturn(e): getvars(e, vars);
+			case ETry(e, _, _, ec): 
+				getvars(e, vars);
+				getvars(ec, vars);
+			case ECall(e, params): 
+				getvars(e, vars);
+				for (e in params) getvars(e, vars);
+			case EParent(e, _): getvars(e, vars);
+			case EArray(e, indx):
+				getvars(e, vars);
+				getvars(indx, vars);
+			case EMapDecl(_, keys, values):
+				for (k in keys) getvars(k, vars);
+				for (v in values) getvars(v, vars);
+			case EArrayDecl(list):
+				for (e in list) getvars(e, vars);
+			case ENew(cl, params):
+				if (!vars.contains(cl))
+					vars.push(cl);
+				for (e in params) getvars(e, vars);
+			case EThrow(e):
+				getvars(e, vars);
+			case ETernary(e, e1, e2):
+				getvars(e1, vars);
+				getvars(e2, vars);
+				getvars(e, vars);
+			case EMeta(_, args, e):
+				for (a in args) getvars(a, vars);
+				getvars(e, vars);
+			case ECheckType(e, _):
+				getvars(e, vars);
+			case EField(e, _, _):
+				getvars(e, vars);
+			case EClass(name, fls,_,_):
+				if (!vars.contains(name))
+					vars.push(name);
+				for (fl in fls) getvars(fl, vars);
+			default:
+		}
+	}
 }

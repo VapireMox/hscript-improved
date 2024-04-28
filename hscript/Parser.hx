@@ -227,9 +227,10 @@ class Parser {
 		expr = Preprocessor.process(expr);
 		if(Parser.optimize) {
 			expr = Optimizer.optimize(expr);
-			trace("INPUT: " + s);
-			trace("OUTPUT: " + Printer.toString(expr));
+			// trace("INPUT: " + s);
+			// trace("OUTPUT: " + Printer.toString(expr));
 		}
+		expr = Preprocessor.processvars(expr, []);
 		return expr;
 	}
 

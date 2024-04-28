@@ -53,7 +53,8 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 			}
 		}
 
-		_class.__custom__variables = interp.variables;
+		// ! lunar do NOT forget you commented this
+		// _class.__custom__variables = interp.variables;
 
 		for(expr in fields) {
 			@:privateAccess
