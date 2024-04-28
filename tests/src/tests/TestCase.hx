@@ -16,8 +16,6 @@ class TestCase extends HScriptRunner {
 			execute(script);
 		if(!Util.assertEq(result, expected, message, pos)) {
 			Sys.println("> " + Printer.convertExprToString(lastExpr));
-			Sys.println("> " + interp._variablesNames);
-			Sys.println("> " + interp._variables);
 			return false;
 		}
 		return true;

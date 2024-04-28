@@ -436,6 +436,7 @@ class Interp {
 		_locals = cast new haxe.ds.Vector<Dynamic>(_variablesNames.length);
 
 		setDefualtVariables();
+		variables.loadDefaults();
 		return exprReturn(expr);
 	}
 
@@ -505,38 +506,6 @@ class Interp {
 		#else
 		throw e;
 		#end
-	}
-
-	public function iresolve(id:String, doException:Bool = true):Dynamic {
-		if (id == null)
-			return null;
-		id = StringTools.trim(id);
-		var l = locals.get(id);
-		if (l != null)
-			return l.r;
-
-		for(map in [variables, publicVariables, staticVariables, customClasses])
-			if (map.exists(id))
-				return map.get(id);
-
-		if (_hasScriptObject) {
-			// search in object
-			if (id == "this") {
-				return scriptObject;
-			} else if (_scriptObjectType == SObject && UnsafeReflect.hasField(scriptObject, id)) {
-				return UnsafeReflect.field(scriptObject, id);
-			} else {
-				if (__instanceFields.contains(id)) {
-					return UnsafeReflect.getProperty(scriptObject, id);
-				} else if (__instanceFields.contains('get_$id')) { // getter
-					return UnsafeReflect.getProperty(scriptObject, 'get_$id')();
-				}
-			}
-		}
-		if (doException)
-			error(EUnknownVariable(id));
-		//var v = variables.get(id);
-		return null;
 	}
 
 	public function resolve(id:String, doException:Bool = true):Dynamic {
@@ -1201,11 +1170,22 @@ class Interp {
 }
 
 class HScriptVariables {
+	public var defaults:Map<String, Dynamic> = [];
+	public var usedefaults:Bool = true;
+
+	public function loadDefaults() {
+		usedefaults = false;
+		for (key => value in defaults)
+			set(key, value);
+		defaults.clear();
+	}
+
 	public var parent:Interp;
 	public function new(parent:Interp)
 		this.parent = parent;
 
 	public inline function set(key:String, value:Dynamic) {
+		if (usedefaults) defaults.set(key, value);
 		if (parent._variablesNames.contains(key))
 			parent._variables[parent._variablesNames.indexOf(key)] = value;
 	}
