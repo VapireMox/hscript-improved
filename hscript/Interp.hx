@@ -256,18 +256,18 @@ class Interp {
 				if (e1 == null) expr(e2) else e1;
 			};
 			case OpAssign: assign(e1, e2);
-			case OpAssignOp(OpAdd): evalAssignOp((a:()->Dynamic, b:()->Dynamic) -> a() + b(), e1, e2);
-			case OpAssignOp(OpSub): evalAssignOp((a:()->Float, b:()->Float) -> a() - b(), e1, e2);
-			case OpAssignOp(OpMult): evalAssignOp((a:()->Float, b:()->Float) -> a() * b(), e1, e2);
-			case OpAssignOp(OpDiv): evalAssignOp((a:()->Float, b:()->Float) -> a() / b(), e1, e2);
-			case OpAssignOp(OpMod): evalAssignOp((a:()->Float, b:()->Float) -> a() % b(), e1, e2);
-			case OpAssignOp(OpAnd): evalAssignOp((a:()->Int, b:()->Int) -> a() & b(), e1, e2);
-			case OpAssignOp(OpOr): evalAssignOp((a:()->Int, b:()->Int) -> a() | b(), e1, e2);
-			case OpAssignOp(OpXor): evalAssignOp((a:()->Int, b:()->Int) -> a() ^ b(), e1, e2);
-			case OpAssignOp(OpShl): evalAssignOp((a:()->Int, b:()->Int) -> a() << b(), e1, e2);
-			case OpAssignOp(OpShr): evalAssignOp((a:()->Int, b:()->Int) -> a() >> b(), e1, e2);
-			case OpAssignOp(OpUShr): evalAssignOp((a:()->Int, b:()->Int) -> a() >>> b(), e1, e2);
-			case OpAssignOp(OpNullCoal): evalAssignOp((a:()->Dynamic, b:()->Dynamic) -> {
+			case OpAssignOp(OpAdd): evalAssignOp((a:Dynamic, b:Dynamic) -> a + b, e1, e2);
+			case OpAssignOp(OpSub): evalAssignOp((a:Float, b:Float) -> a - b, e1, e2);
+			case OpAssignOp(OpMult): evalAssignOp((a:Float, b:Float) -> a * b, e1, e2);
+			case OpAssignOp(OpDiv): evalAssignOp((a:Float, b:Float) -> a / b, e1, e2);
+			case OpAssignOp(OpMod): evalAssignOp((a:Float, b:Float) -> a % b, e1, e2);
+			case OpAssignOp(OpAnd): evalAssignOp((a:Int, b:Int) -> a & b, e1, e2);
+			case OpAssignOp(OpOr): evalAssignOp((a:Int, b:Int) -> a | b, e1, e2);
+			case OpAssignOp(OpXor): evalAssignOp((a:Int, b:Int) -> a ^ b, e1, e2);
+			case OpAssignOp(OpShl): evalAssignOp((a:Int, b:Int) -> a << b, e1, e2);
+			case OpAssignOp(OpShr): evalAssignOp((a:Int, b:Int) -> a >> b, e1, e2);
+			case OpAssignOp(OpUShr): evalAssignOp((a:Int, b:Int) -> a >>> b, e1, e2);
+			case OpAssignOp(OpNullCoal): evalAssignOpOrderImportant((a:()->Dynamic, b:()->Dynamic) -> {
 				var a = a();
 				return a == null ? b() : a;
 			}, e1, e2);
@@ -325,9 +325,9 @@ class Interp {
 		var v = expr(e2);
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var iname:String = _variablesNames[id];
 				var l = _locals[id];
 				if (l == null) {
+					var iname:String = _variablesNames[id];
 					// TODO: WHEN ADDING ENUM DEFINED THING CHANGE THIS
 					if (_variables[id] != null && !staticVariables.exists(iname) && !publicVariables.exists(iname) && _hasScriptObject) {
 						if (_scriptObjectType == SObject) {
@@ -376,15 +376,56 @@ class Interp {
 		return v;
 	}
 
-	//function assignOp(op, fop:Dynamic->Dynamic->Dynamic) {
-	//	var me = this;
-	//	binops.set(op, function(e1, e2) return me.evalAssignOp(op, fop, e1, e2));
-	//}
+	function evalAssignOp(fop:(a:Dynamic, b:Dynamic)->Dynamic, e1, e2):Dynamic {
+		var v:Dynamic = null;
+		switch (Tools.expr(e1)) {
+			case EIdent(id):
+				var l = _locals[id];
+				v = fop(expr(e1), expr(e2));
+				if (l == null) {
+					if(_hasScriptObject) {
+						var iname:String = _variablesNames[id];
+						if(_scriptObjectType == SObject) {
+							UnsafeReflect.setField(scriptObject, iname, v);
+						} else if (__instanceFields.contains(iname)) {
+							UnsafeReflect.setProperty(scriptObject, iname, v);
+						} else if (__instanceFields.contains('set_$iname')) { // setter
+							UnsafeReflect.getProperty(scriptObject, 'set_$iname')(v);
+						} else {
+							isetVar(id, v);
+						}
+					} else {
+						isetVar(id, v);
+					}
+				}
+				else
+					l.r = v;
+			case EField(e, f, s):
+				var obj = expr(e);
+				if(s && obj == null) return null;
+				v = fop(get(obj, f), expr(e2));
+				v = set(obj, f, v);
+			case EArray(e, index):
+				var arr:Dynamic = expr(e);
+				var index:Dynamic = expr(index);
+				if (isMap(arr)) {
+					var map = getMap(arr);
 
-	// kk
-	function evalAssignOp(fop:(a:()->Dynamic, b:()->Dynamic)->Dynamic, e1, e2):Dynamic {
+					v = fop(map.get(index), expr(e2));
+					map.set(index, v);
+				} else {
+					v = fop(arr[index], expr(e2));
+					arr[index] = v;
+				}
+			default:
+				return error(ECustom("Unknown field when handing assign operation"));
+		}
+		return v;
+	}
+
+	function evalAssignOpOrderImportant(fop:(a:()->Dynamic, b:()->Dynamic)->Dynamic, e1, e2):Dynamic {
 		var aFunc:()->Dynamic = () -> expr(e1);
-		var bFunc:()->Dynamic = () -> expr(e2); // push first, wait we gotta remove the comments xd
+		var bFunc:()->Dynamic = () -> expr(e2);
 		var v:Dynamic = null;
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
@@ -723,10 +764,8 @@ class Interp {
 							if(!staticVariables.exists(varName)) { // dont overwrite existing static variables
 								staticVariables.set(varName, _locals[n].r);
 							}
-						} else {
-							if (isPublic) {
-								publicVariables.set(varName, _locals[n].r);
-							}
+						} else if (isPublic) {
+							publicVariables.set(varName, _locals[n].r);
 						}
 					}
 					else
@@ -820,7 +859,7 @@ class Interp {
 
 				var me = this;
 				var hasOpt = false, minParams = 0;
-                //for (a in params) trace(a.name);
+				//for (a in params) trace(a.name);
 				for (p in params)
 					if (p.opt)
 						hasOpt = true;
