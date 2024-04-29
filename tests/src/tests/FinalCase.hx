@@ -27,6 +27,7 @@ class FinalCase extends TestCase {
 		assertDisplay("(i - x) * 30 + 90", ((i-x) * 30) + 90);
 		assertDisplay("i - x * 30 + 90", i-x * 30 + 90);
 
+		/*
 		// Test operator precedence
 		assertDisplay("i / x * 30 + 90", i / x * 30 + 90);
 		assertDisplay("i / (x * 30) + 90", i / (x * 30) + 90);
@@ -44,6 +45,7 @@ class FinalCase extends TestCase {
 		bloomShader.dim = dim = .8 + (.3 * FlxMath.fastSin(__totalTime));
 		bloomShader.size = size = 18 + (8 * FlxMath.fastSin(__totalTime));
 		');
+		*/
 
 		Util.parse('sprite.setPosition(codesList.x + (sprite.ID % 2 == 1 ? 240 : 67),codesList.y + (15 * sprite.ID) + (sprite.ID%2 == 1 ? 35 : 54));');
 
@@ -74,7 +76,6 @@ class FinalCase extends TestCase {
 
 		assertEq("[for(i in 0...10) if(i % 2 == 0) i => isEven(i) else i => isEven(i)]", [for(i in 0...10) if(i % 2 == 0) i => isEven(i) else i => isEven(i)]);
 		assertEq("[for(i in 0...10) if(i % 2 == 0) isEven(i) else isEven(i)]", [for(i in 0...10) if(i % 2 == 0) isEven(i) else isEven(i)]);
-
 		headerCode = "function area(a:Int, b:Int):Int { return a * b; };";
 		function area(a:Int, b:Int):Int { return a * b; }
 

@@ -210,6 +210,7 @@ class Util {
 			// Print stack trace
 			var stack = haxe.CallStack.toString(haxe.CallStack.exceptionStack());
 			Sys.println("## Stack trace: " + stack);
+			Sys.exit(1);
 		}
 		return result;
 	}

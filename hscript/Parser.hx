@@ -225,12 +225,11 @@ class Parser {
 		}
 		var expr = if( a.length == 1 ) a[0] else mk(EBlock(a),0);
 		expr = Preprocessor.process(expr);
-		if(Parser.optimize) {
+		if(Parser.optimize)
 			expr = Optimizer.optimize(expr);
-			// trace("INPUT: " + s);
-			// trace("OUTPUT: " + Printer.toString(expr));
-		}
-		expr = Preprocessor.processvars(expr, []);
+		expr = Postprocessor.processvars(expr);
+		// trace("INPUT: " + s); // useful for debugging
+		//trace("OUTPUT: " + Printer.toString(expr));
 		return expr;
 	}
 
@@ -466,7 +465,7 @@ class Parser {
 						}
 					default:
 				}
-				e = mk(EBinop("+", e, er));
+				e = mk(EBinop(OpAdd, e, er));
 				//e = mk(EParent(e));
 			}
 			while(tg.length > 0) {
@@ -629,7 +628,7 @@ class Parser {
 			var isTypeMap = (nextType != null) && nextType.match(CTPath(["Map"], [_, _]));
 			var isMap = isTypeMap;
 			if(!isMap) {
-				isMap = Lambda.exists(a, (e) -> Tools.expr(e).match(EBinop("=>", _))); // Check if any element is a => b
+				isMap = Lambda.exists(a, (e) -> Tools.expr(e).match(EBinop(OpArrow, _))); // Check if any element is a => b
 			}
 			if(isMap) {
 				// TODO: clean up this code more
@@ -641,7 +640,7 @@ class Parser {
 				var values:Array<Expr> = [];
 				for (e in a) {
 					switch (Tools.expr(e)) {
-						case EBinop("=>", eKey, eValue): {
+						case EBinop(OpArrow, eKey, eValue): {
 							switch(Tools.expr(eKey)) {
 								case EConst(CInt(_)):// | EConst(CFloat(_)):
 									isKeyInt = true;
@@ -791,7 +790,7 @@ class Parser {
 			default:
 				// tmp.set(k, v);
 				switch( Tools.expr(e) ) {
-					case EBinop("=>", e1, e2):
+					case EBinop(OpArrow, e1, e2):
 						//ECall( mk(EField(mk(EIdent(tmp), pmin(e), pmax(e)), "set"), pmin(e), pmax(e)), [e1, e2]);
 						ECall( mk(EIdent(tmp), pmin(e), pmax(e)), [e1, e2]);
 					default: // default incase of error
@@ -824,37 +823,48 @@ class Parser {
 				isMapCompr(e2);
 			default:
 				// tmp.set(k, v);
-				return Tools.expr(e).match(EBinop("=>", _));
+				return Tools.expr(e).match(EBinop(OpArrow, _));
 		}
 	}
 
-	function makeUnop( op, e ) {
+	function makeUnop( op:String, e:Expr ):Expr {
+		var op = Tools.getUnopEnum(op);
+		return _makeUnop(op, e);
+	}
+
+	function _makeUnop( op:Unop, e:Expr ):Expr {
 		if( e == null && resumeErrors )
 			return null;
 		return switch( Tools.expr(e) ) {
-			case EBinop(bop, e1, e2): mk(EBinop(bop, makeUnop(op, e1), e2), pmin(e1), pmax(e2));
-			case ETernary(e1, e2, e3): mk(ETernary(makeUnop(op, e1), e2, e3), pmin(e1), pmax(e3));
+			case EBinop(bop, e1, e2): mk(EBinop(bop, _makeUnop(op, e1), e2), pmin(e1), pmax(e2));
+			case ETernary(e1, e2, e3): mk(ETernary(_makeUnop(op, e1), e2, e3), pmin(e1), pmax(e3));
 			default: mk(EUnop(op,true,e),pmin(e),pmax(e));
 		}
 	}
 
-	function makeBinop( op, e1, e ) {
+	function makeBinop( op:String, e1:Expr, e:Expr ) {
 		// TODO: clean this up
 		if(!Tools.isValidBinOp(op))
 			error(EInvalidOp(op),pmin(e1),pmax(e1));
+		var op = Tools.getOpEnum(op);
+		return _makeBinop(op, e1, e);
+	}
+
+	function _makeBinop( op:Binop, e1:Expr, e:Expr ) {
+		// TODO: clean this up
 		if( e == null && resumeErrors )
 			return mk(EBinop(op,e1,e),pmin(e1),pmax(e1));
 		return switch( Tools.expr(e) ) {
 			case EBinop(op2,e2,e3):
-				if( opPriority.get(op) <= opPriority.get(op2) && !opRightAssoc.exists(op) )
-					mk(EBinop(op2,makeBinop(op,e1,e2),e3),pmin(e1),pmax(e3));
+				if( opPriority.get(Printer.getBinaryOp(op)) <= opPriority.get(Printer.getBinaryOp(op2)) && !opRightAssoc.exists(Printer.getBinaryOp(op)) )
+					mk(EBinop(op2,_makeBinop(op,e1,e2),e3),pmin(e1),pmax(e3));
 				else
 					mk(EBinop(op, e1, e), pmin(e1), pmax(e));
 			case ETernary(e2,e3,e4):
-				if( opRightAssoc.exists(op) )
+				if( opRightAssoc.exists(Printer.getBinaryOp(op)) )
 					mk(EBinop(op,e1,e),pmin(e1),pmax(e));
 				else
-					mk(ETernary(makeBinop(op, e1, e2), e3, e4), pmin(e1), pmax(e));
+					mk(ETernary(_makeBinop(op, e1, e2), e3, e4), pmin(e1), pmax(e));
 			default:
 				mk(EBinop(op,e1,e),pmin(e1),pmax(e));
 		}
@@ -1328,7 +1338,7 @@ class Parser {
 						push(tk);
 						return e1;
 					}
-					return parseExprNext(mk(EUnop(op,false,e1),pmin(e1)));
+					return parseExprNext(mk(EUnop(Tools.getUnopEnum(op),false,e1),pmin(e1)));
 				}
 				return makeBinop(op,e1,parseExpr());
 			case TDot | TQuestionDot:
@@ -2270,7 +2280,7 @@ class Parser {
 					case '?'.code:
 						var orp = readPos;
 						if (readChar() == '='.code)
-							return TOp("??"+"=");
+							return TOp("??" + "=");
 
 						this.readPos = orp;
 						return TOp("??");
@@ -2459,7 +2469,7 @@ class Parser {
 			}
 			mk(EIdent(id), tokenMin, tokenMax);
 		case TOp("!"):
-			mk(EUnop("!", true, parsePreproCond()), tokenMin, tokenMax);
+			mk(EUnop(OpNot, true, parsePreproCond()), tokenMin, tokenMax);
 		default:
 			unexpected(tk);
 		}
@@ -2477,13 +2487,13 @@ class Parser {
 					error(EInvalidPreprocessor("Can't eval " + Tools.expr(e).getName() + " with " + Tools.expr(e2).getName()), readPos, readPos);
 					return false;
 			}
-		case EUnop("!", _, e):
+		case EUnop(OpNot, _, e):
 			return !evalPreproCond(e);
 		case EParent(e):
 			return evalPreproCond(e);
-		case EBinop("&&", e1, e2):
+		case EBinop(OpBoolAnd, e1, e2):
 			return evalPreproCond(e1) && evalPreproCond(e2);
-		case EBinop("||", e1, e2):
+		case EBinop(OpBoolOr, e1, e2):
 			return evalPreproCond(e1) || evalPreproCond(e2);
 		default:
 			error(EInvalidPreprocessor("Can't eval " + Tools.expr(e).getName()), readPos, readPos);

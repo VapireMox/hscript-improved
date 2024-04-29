@@ -74,7 +74,7 @@ class Optimizer {
 					var c2 = getBool(e2);
 
 					if(c1 == false && c2 == true) { // (VAR ? false : true)
-						return optimize(mk(EUnop("!", true, econd), s));
+						return optimize(mk(EUnop(OpNot, true, econd), s));
 					}
 					if(c1 == true && c2 == false) { // (VAR ? true : false)
 						return optimize(mk(Tools.expr(econd), s));
@@ -113,7 +113,7 @@ class Optimizer {
 					var c2 = getBool(e2);
 
 					if(c1 == false && c2 == true) { // (VAR ? false : true)
-						return optimize(mk(EUnop("!", true, econd), s));
+						return optimize(mk(EUnop(OpNot, true, econd), s));
 					}
 					if(c1 == true && c2 == false) { // (VAR ? true : false)
 						return optimize(mk(Tools.expr(econd), s));
@@ -391,9 +391,9 @@ class Optimizer {
 				// Possible bugs here
 				if(isNumber(e1) && !isConstant(e2)) {
 					var c1 = getNumber(e1);
-					if(compareNumber(c1, 0) && op == "+")
+					if(compareNumber(c1, 0) && op == OpAdd)
 						return mk(Tools.expr(e2), s);
-					if(compareNumber(c1, 1) && op == "*")
+					if(compareNumber(c1, 1) && op == OpMult)
 						return mk(Tools.expr(e2), s);
 					//if(compareNumber(c1, 0) && op == "*")
 					//	return mk(convertConstant(0), s);
@@ -401,11 +401,11 @@ class Optimizer {
 
 				if(!isConstant(e1) && isNumber(e2)) {
 					var c2 = getNumber(e2);
-					if(op == "+" && compareNumber(c2, 0))
+					if(op == OpAdd && compareNumber(c2, 0))
 						return mk(Tools.expr(e1), s);
-					if(op == "/" && compareNumber(c2, 1))
+					if(op == OpDiv && compareNumber(c2, 1))
 						return mk(Tools.expr(e1), s);
-					if(op == "*" && compareNumber(c2, 1))
+					if(op == OpMult && compareNumber(c2, 1))
 						return mk(Tools.expr(e1), s);
 					//if(op == "*" && compareNumber(c2, 0))
 					//	return mk(convertConstant(0), s);
@@ -419,11 +419,12 @@ class Optimizer {
 				if(isConstant(e) && prefix) {
 					var constant:Dynamic = getConstant(e);
 					switch(op) {
-						case "-": return mk(convertConstant(-constant), s);
-						case "!": return mk(convertConstant(!constant), s);
-						case "~":
+						case OpNeg: return mk(convertConstant(-constant), s);
+						case OpNot: return mk(convertConstant(!constant), s);
+						case OpNegBits:
 							var complement = #if (neko && !haxe3) haxe.Int32.complement(constant) #else ~constant #end;
 							return mk(convertConstant(complement), s);
+						default:
 					}
 				}
 
@@ -605,29 +606,29 @@ class Optimizer {
 		#end
 	}
 
-	static function optimizeOp(op, f1:Dynamic, f2:Dynamic):Dynamic {
+	static function optimizeOp(op:Binop, f1:Dynamic, f2:Dynamic):Dynamic {
 		//trace("Optimizing " + f1 + " " + op + " " + f2);
 		return switch(op) {
-			case "+": f1 + f2;
-			case "-": f1 - f2;
-			case "*": f1 * f2;
-			case "/": f1 / f2;
-			case "%": f1 % f2;
-			case "&": f1 & f2;
-			case "|": f1 | f2;
-			case "^": f1 ^ f2;
-			case "<<": f1 << f2;
-			case ">>": f1 >> f2;
-			case ">>>": f1 >>> f2;
-			case "==": f1 == f2;
-			case "!=": f1 != f2;
-			case ">=": f1 >= f2;
-			case "<=": f1 <= f2;
-			case ">": f1 > f2;
-			case "<": f1 < f2;
-			case "||": f1 == true || f2 == true;
-			case "&&": f1 == true && f2 == true;
-			case "??": f1 == null ? f2 : f1;
+			case OpAdd: f1 + f2;
+			case OpSub: f1 - f2;
+			case OpMult: f1 * f2;
+			case OpDiv: f1 / f2;
+			case OpMod: f1 % f2;
+			case OpAnd: f1 & f2;
+			case OpOr: f1 | f2;
+			case OpXor: f1 ^ f2;
+			case OpShl: f1 << f2;
+			case OpShr: f1 >> f2;
+			case OpUShr: f1 >>> f2;
+			case OpEq: f1 == f2;
+			case OpNotEq: f1 != f2;
+			case OpGte: f1 >= f2;
+			case OpLte: f1 <= f2;
+			case OpGt: f1 > f2;
+			case OpLt: f1 < f2;
+			case OpBoolOr: f1 == true || f2 == true;
+			case OpBoolAnd: f1 == true && f2 == true;
+			case OpNullCoal: f1 == null ? f2 : f1;
 			default: null;
 		}
 	}

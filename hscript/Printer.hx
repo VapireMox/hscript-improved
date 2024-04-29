@@ -49,6 +49,11 @@ class Printer {
 		return buf.toString();
 	}
 
+	public static function convertTypeToString( t : CType ) {
+		var printer = new Printer();
+		return printer.typeToString(t);
+	}
+
 	inline function add<T>(s:T) buf.add(s);
 
 	function type( t : CType ) {
@@ -73,11 +78,14 @@ class Printer {
 			type(t);
 		case CTFun(args, ret) if (Lambda.exists(args, function (a) return a.match(CTNamed(_, _)))):
 			add('(');
-			for (a in args)
+			var first = true;
+			for (i=>a in args) {
 				switch a {
 					case CTNamed(_, _): type(a);
 					default: type(CTNamed('_', a));
 				}
+				if( i != args.length - 1 ) add(", ");
+			}
 			add(')->');
 			type(ret);
 		case CTFun(args, ret):
@@ -196,6 +204,59 @@ class Printer {
 		return buf.toString();
 	}
 
+	function getVar(v:VarN) {
+		if( v == null ) {
+			return ("??NULL??");
+		}
+
+		if(v is Int) {
+			return ("$" + v);
+		} else {
+			return (v);
+		}
+	}
+
+	public static function getBinaryOp(op:Binop) {
+		return switch(op) {
+			case OpAdd: "+";
+			case OpSub: "-";
+			case OpMult: "*";
+			case OpDiv: "/";
+			case OpMod: "%";
+			case OpAnd: "&";
+			case OpOr: "|";
+			case OpXor: "^";
+			case OpShl: "<<";
+			case OpShr: ">>";
+			case OpUShr: ">>>";
+			case OpEq: "==";
+			case OpNotEq: "!=";
+			case OpGt: ">";
+			case OpGte: ">=";
+			case OpLt: "<";
+			case OpLte: "<=";
+			case OpBoolAnd: "&&";
+			case OpBoolOr: "||";
+			case OpIs: "is";
+			case OpNullCoal: "??";
+			case OpAssign: "=";
+			case OpArrow: "=>";
+			case OpInterval: "...";
+			case OpAssignOp(op): getBinaryOp(op) + "=";
+		}
+	}
+
+	public static function getUnaryOp(op:Unop) {
+		return switch(op) {
+			case OpIncrement: "++";
+			case OpDecrement: "--";
+			case OpNot: "!";
+			case OpNeg: "-";
+			case OpNegBits: "~";
+			case OpSpread: "...";
+		}
+	}
+
 	function expr( e : Expr ) {
 		if( e == null ) {
 			add("??NULL??");
@@ -213,7 +274,7 @@ class Printer {
 				default:
 			}
 		case EClass(name, fields, extend, interfaces):
-			add('class $name');
+			add('class ${getVar(name)}');
 			if (extend != null)
 				add(' extends $extend');
 			for(_interface in interfaces) {
@@ -238,9 +299,9 @@ class Printer {
 				add('"');
 			}
 		case EIdent(v):
-			add(v);
+			add(getVar(v));
 		case EVar(n, t, e): // TODO: static, public, override
-			add("var " + n);
+			add("var " + getVar(n));
 			if( t != null )
 				addType(t);
 			else
@@ -282,8 +343,7 @@ class Printer {
 			expr(e);
 			add((s == true ? "?." : ".") + f);
 		case EBinop(op, e1, e2):
-			var shouldParen = false;
-			var op1 = switch(Tools.expr(e1)) {
+			/*var op1 = switch(Tools.expr(e1)) {
 				case EBinop(op, _, _): op;
 				case EConst(_): "_";
 				case EIdent(_): "_";
@@ -295,7 +355,10 @@ class Printer {
 				case EIdent(_): "_";
 				default: null;
 			}
-			var paran = Tools.checkOpPrecedence(op, op1, op2);
+			var paran = Tools.checkOpPrecedence(op, op1, op2);*/
+			var paran = 2;
+
+			var op = getBinaryOp(op);
 
 			if(paran == 0 || paran == 2) {
 				add("(");
@@ -316,6 +379,8 @@ class Printer {
 				expr(e2);
 			}
 		case EUnop(op, pre, e):
+			var op = getUnaryOp(op);
+
 			if( pre ) {
 				add(op);
 				expr(e);
@@ -364,12 +429,12 @@ class Printer {
 			expr(cond);
 			add(" )");
 		case EFor(v, it, e):
-			add("for( "+v+" in ");
+			add("for( "+getVar(v)+" in ");
 			expr(it);
 			add(" )");
 			block(e, true);
 		case EForKeyValue(v, it, e, ithv):
-			add("for( "+ithv+" => "+v+" in ");
+			add("for( "+getVar(ithv)+" => "+getVar(v)+" in ");
 			expr(it);
 			add(" )");
 			block(e, true);
@@ -380,13 +445,13 @@ class Printer {
 		case EFunction(params, e, name, ret): // TODO: static, public, override
 			add("function");
 			if( name != null )
-				add(" " + name);
+				add(" " + getVar(name));
 			add("(");
 			var first = true;
 			for( a in params ) {
 				if( first ) first = false else add(", ");
 				if( a.opt ) add("?");
-				add(a.name);
+				add(getVar(a.name));
 				addType(a.t);
 			}
 			add(")");
@@ -423,7 +488,7 @@ class Printer {
 			}
 			add("]");
 		case ENew(cl, args):
-			add("new " + cl + "(");
+			add("new " + getVar(cl) + "(");
 			var first = true;
 			for( e in args ) {
 				if( first ) first = false else add(", ");
@@ -513,6 +578,8 @@ class Printer {
 			add(" : ");
 			addType(t);
 			add(")");
+		case EInfo(_, e):
+			expr(e);
 		}
 	}
 
