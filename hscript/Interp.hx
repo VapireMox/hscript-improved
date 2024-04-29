@@ -1225,8 +1225,8 @@ class Interp {
 			error(EInvalidAccess(f));
 
 		var cls = Type.getClass(o);
-		var cl:Null<String> = getClassType(o, cls);
-		if (useRedirects && cl != null && getRedirects.exists(cl) && (_getRedirect = getRedirects[cl]) != null) {
+		var cl:Null<String>;
+		if (useRedirects && (cl = getClassType(o, cls)) != null && getRedirects.exists(cl) && (_getRedirect = getRedirects[cl]) != null) {
 			return _getRedirect(o, f);
 		} else if (o is IHScriptCustomBehaviour) {
 			var obj = cast(o, IHScriptCustomBehaviour);
@@ -1250,8 +1250,8 @@ class Interp {
 		if (o == null)
 			error(EInvalidAccess(f));
 
-		var cl:Null<String> = getClassType(o);
-		if (useRedirects && cl != null && setRedirects.exists(cl) && (_setRedirect = setRedirects[cl]) != null)
+		var cl:Null<String>;
+		if (useRedirects && (cl = getClassType(o)) != null && setRedirects.exists(cl) && (_setRedirect = setRedirects[cl]) != null)
 			return _setRedirect(o, f, v);
 		else if (o is IHScriptCustomBehaviour) {
 			var obj = cast(o, IHScriptCustomBehaviour);
@@ -1346,7 +1346,7 @@ class HScriptVariables {
 		var indx:Int = parent._variablesNames.indexOf(key);
 		return indx != -1 && (key == "null" ? true : parent._variables[indx] != null);
 	}
-		
+
 	public inline function remove(key:String)
 		parent._variables[parent._variablesNames.indexOf(key)] = null;
 
