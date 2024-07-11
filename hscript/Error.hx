@@ -62,7 +62,7 @@ enum Error_
 	EInvalidEscape( s : String );
 }
 
-enum abstract ErrorMessage(Int) from Int to Int {
+enum abstract ErrorMessage(Expr.UInt8) from Expr.UInt8 to Expr.UInt8 {
     final INVALID_CHAR_CODE_MULTI;
     final FROM_CHAR_CODE_NON_INT;
     final EMPTY_INTERPOLATION;

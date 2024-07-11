@@ -314,6 +314,7 @@ class Printer {
 							case EnumMap: add("EnumValue");
 							case IntMap: add("Int");
 							case UnknownMap: add("?");
+							case Null: add("Null");
 						}
 						add(", Dynamic>");
 					default:

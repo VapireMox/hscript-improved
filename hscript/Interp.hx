@@ -45,7 +45,7 @@ private enum Stop {
 	SReturn;
 }
 
-enum abstract ScriptObjectType(Int) {
+enum abstract ScriptObjectType(UInt8) {
 	var SClass;
 	var SObject;
 	var SStaticClass;

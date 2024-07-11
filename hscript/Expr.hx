@@ -21,6 +21,16 @@
  */
 package hscript;
 
+typedef Int8 = #if cpp cpp.Int8 #else Int #end;
+typedef Int16 = #if cpp cpp.Int16 #else Int #end;
+typedef Int32 = #if cpp cpp.Int32 #else Int #end;
+typedef Int64 = #if cpp cpp.Int64 #else Int #end;
+
+typedef UInt8 = #if cpp cpp.UInt8 #else Int #end;
+typedef UInt16 = #if cpp cpp.UInt16 #else Int #end;
+typedef UInt32 = #if cpp cpp.UInt32 #else Int #end;
+typedef UInt64 = #if cpp cpp.UInt64 #else Int #end;
+
 enum Const {
 	CInt( v : Int );
 	CFloat( f : Float );
@@ -30,12 +40,13 @@ enum Const {
 	#end
 }
 
-enum MapType {
-	IntMap;
-	StringMap;
-	EnumMap;
-	ObjectMap;
-	UnknownMap;
+enum abstract MapType(UInt8) {
+	var Null;
+	var IntMap;
+	var StringMap;
+	var EnumMap;
+	var ObjectMap;
+	var UnknownMap;
 }
 
 typedef Error = hscript.Error.Error_;
@@ -224,7 +235,7 @@ enum Binop {
 	OpNullCoal;
 }
 
-enum abstract Unop(Int) {
+enum abstract Unop(UInt8) {
 	/**
 		`++`
 	**/
@@ -352,13 +363,13 @@ typedef FieldDecl = {
 	var access : Array<FieldAccess>;
 }
 
-enum FieldAccess {
-	APublic;
-	APrivate;
-	AInline;
-	AOverride;
-	AStatic;
-	AMacro;
+enum abstract FieldAccess(UInt8) {
+	var APublic;
+	var APrivate;
+	var AInline;
+	var AOverride;
+	var AStatic;
+	var AMacro;
 }
 
 enum FieldKind {

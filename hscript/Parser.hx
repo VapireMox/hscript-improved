@@ -674,14 +674,14 @@ class Parser {
 
 				var t = b2i(isKeyString) + b2i(isKeyInt) + b2i(isKeyObject) + b2i(isKeyEnum);
 
-				var type:MapType = null;
+				var type:MapType = Null;
 				if(t != 1) type = UnknownMap;
 				else if(isKeyInt) type = IntMap;
 				else if(isKeyString) type = StringMap;
 				else if(isKeyEnum) type = EnumMap;
 				else if(isKeyObject) type = ObjectMap;
 
-				if(type == null)
+				if(type == Null)
 					error(EPreset(UNKNOWN_MAP_TYPE), p1, p1);
 
 				return parseExprNext(mk(EMapDecl(type, keys, values), p1));
