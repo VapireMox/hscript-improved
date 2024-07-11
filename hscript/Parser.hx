@@ -695,7 +695,12 @@ class Parser {
 		}
 	}
 
+	#if cpp
+	static inline function b2i(b:Bool) return untyped __cpp__("({0} ? 1 : 0)", b);
+	//static inline function b2i(b:Bool) return untyped __cpp__("(int)({0})", b);
+	#else
 	static inline function b2i(b:Bool) return b ? 1 : 0;
+	#end
 
 	function parseLambda( args : Array<Argument>, pmin ) {
 		while( true ) {

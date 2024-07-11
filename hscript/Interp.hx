@@ -600,11 +600,13 @@ class Interp {
 	}
 
 	public function iresolve(id:Int, doException:Bool = true):Dynamic {
-		var l = _locals[id];
+		//var l:DeclaredVar = untyped __cpp__("this->_locals->__get(id)");//_locals[id];
+		var l:DeclaredVar = _locals[id];
 		if (l != null)
 			return l.r;
 
-		if (_variables[id] != null) return _variables[id];
+		var v = _variables[id];
+		if (v != null) return v;
 
 		var sid:String = _variablesNames[id];
 		for(map in [publicVariables, staticVariables, customClasses])
@@ -1205,7 +1207,7 @@ class Interp {
 	private static var _getRedirect:Dynamic->String->Dynamic;
 	private static var _setRedirect:Dynamic->String->Dynamic->Dynamic;
 
-	public var useRedirects:Bool = true;
+	public var useRedirects:Bool = false;
 
 	static function getClassType(o:Dynamic, ?cls:Class<Any>):Null<String> {
 		return switch (Type.typeof(o)) {
@@ -1225,8 +1227,10 @@ class Interp {
 			error(EInvalidAccess(f));
 
 		var cls = Type.getClass(o);
-		var cl:Null<String>;
-		if (useRedirects && (cl = getClassType(o, cls)) != null && getRedirects.exists(cl) && (_getRedirect = getRedirects[cl]) != null) {
+		if (useRedirects && {
+			var cl:Null<String> = getClassType(o, cls);
+			cl != null && getRedirects.exists(cl) && (_getRedirect = getRedirects[cl]) != null;
+		}) {
 			return _getRedirect(o, f);
 		} else if (o is IHScriptCustomBehaviour) {
 			var obj = cast(o, IHScriptCustomBehaviour);
@@ -1250,8 +1254,10 @@ class Interp {
 		if (o == null)
 			error(EInvalidAccess(f));
 
-		var cl:Null<String>;
-		if (useRedirects && (cl = getClassType(o)) != null && setRedirects.exists(cl) && (_setRedirect = setRedirects[cl]) != null)
+		if (useRedirects && {
+			var cl:Null<String> = getClassType(o);
+			cl != null && setRedirects.exists(cl) && (_setRedirect = setRedirects[cl]) != null;
+		})
 			return _setRedirect(o, f, v);
 		else if (o is IHScriptCustomBehaviour) {
 			var obj = cast(o, IHScriptCustomBehaviour);
@@ -1292,7 +1298,12 @@ class Interp {
 		_locals = cast new haxe.ds.Vector<Dynamic>(len);
 	}
 
+	#if cpp
+	static inline function b2i(b:Bool) return untyped __cpp__("({0} ? 1 : 0)", b);
+	//static inline function b2i(b:Bool) return untyped __cpp__("(int)({0})", b);
+	#else
 	static inline function b2i(b:Bool) return b ? 1 : 0;
+	#end
 }
 
 class HScriptVariablesKeyValueIterator {
