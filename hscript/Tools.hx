@@ -138,7 +138,7 @@ class Tools {
 			case ETry(e, v, t, c): ETry(f(e), v, t, f(c));
 			case EObject(fl): EObject([for( fi in fl ) new ObjectField(fi.name, f(fi.e))]);
 			case ETernary(c, e1, e2): ETernary(f(c), f(e1), f(e2));
-			case ESwitch(e, cases, def): ESwitch(f(e), [for( c in cases ) new SwitchCase([for( v in c.values ) f(v)], f(c.expr))], def == null ? null : f(def));
+			case ESwitch(e, cases, def): ESwitch(f(e), [for( c in cases ) { values : [for( v in c.values ) f(v)], expr : f(c.expr) } ], def == null ? null : f(def));
 			case EMeta(name, args, e): EMeta(name, args == null ? null : [for( a in args ) f(a)], f(e));
 			case ECheckType(e,t): ECheckType(f(e), t);
 			case EImport(c, m): EImport(c, m);

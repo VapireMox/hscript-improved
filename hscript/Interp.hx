@@ -103,27 +103,17 @@ class Interp {
 	}
 	public var errorHandler:Error->Void;
 	public var importFailedCallback:Array<String>->Bool;
-	#if haxe3
+
+	public var locals:Map<String, DeclaredVar>;
+
 	public var customClasses:Map<String, Dynamic>;
 	public var variables:Map<String, Dynamic>;
 	public var publicVariables:Map<String, Dynamic>;
 	public var staticVariables:Map<String, Dynamic>;
 
-	public var locals:Map<String, DeclaredVar>;
-	var binops:Map<String, Expr->Expr->Dynamic>;
-	#else
-	public var customClasses:Hash<Dynamic>;
-	public var variables:Hash<Dynamic>;
-	public var publicVariables:Hash<Dynamic>;
-	public var staticVariables:Hash<Dynamic>;
-
-	public var locals:Hash<DeclaredVar>;
-	var binops:Hash<Expr->Expr->Dynamic>;
-	#end
-
 	var depth:Int = 0;
 	var inTry:Bool;
-	var declared:Array<RedeclaredVar>;
+	var declared:Array<RedeclaredVar> = [];
 	var returnValue:Dynamic;
 
 	var isBypassAccessor:Bool = false;
@@ -152,7 +142,6 @@ class Interp {
 		staticVariables = new Map<String, Dynamic>();
 
 		locals = new Map();
-		declared = new Array();
 		setDefaultVariables();
 	}
 
@@ -332,8 +321,12 @@ class Interp {
 		var v = expr(e2);
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				if (!locals.exists(id)) {
-					if (_hasScriptObject && !variables.exists(id) && !staticVariables.exists(id) && !publicVariables.exists(id)) {
+				var l = locals[id];
+				if (l == null) {
+					// TODO: WHEN ADDING ENUM DEFINED THING CHANGE THIS
+					if (!variables.exists(id) && 
+						!staticVariables.exists(id) && !publicVariables.exists(id) && _hasScriptObject
+					) {
 						if (_scriptObjectType == SObject) {
 							UnsafeReflect.setField(scriptObject, id, v);
 						} else {
@@ -398,7 +391,7 @@ class Interp {
 		var v:Dynamic = null;
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var l = locals.get(id);
+				var l = locals[id];
 				v = fop(expr(e1), expr(e2));
 				if (l == null) {
 					if(_hasScriptObject) {
@@ -466,7 +459,7 @@ class Interp {
 		var v:Dynamic = null;
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var l = locals.get(id);
+				var l = locals[id];
 				v = fop(aFunc, bFunc);
 				if (l == null) {
 					if(_hasScriptObject) {
@@ -515,11 +508,13 @@ class Interp {
 		#end
 		switch (e) {
 			case EIdent(id):
-				if(locals.exists(id)) {
-					var l = locals.get(id);
-					var v:Dynamic = l.r;
-					if (prefix) {
-						v += delta;
+				var l = locals[id];
+				var v:Dynamic = (l == null) ? resolve(id) : l.r;
+				if (prefix) {
+					v += delta;
+					if (l == null)
+						setVar(id, v)
+					else
 						l.r = v;
 					} else
 						l.r = v + delta;
@@ -651,17 +646,14 @@ class Interp {
 		if (id == null)
 			return null;
 		id = StringTools.trim(id);
-		if (locals.exists(id))
-			return locals.get(id).r;
+		var l = locals.get(id);
+		if (l != null)
+			return l.r;
 
-		if(variables.exists(id))
-			return variables.get(id);
-		if(publicVariables.exists(id))
-			return publicVariables.get(id);
-		if(staticVariables.exists(id))
-			return staticVariables.get(id);
-		if(customClasses.exists(id))
-			return customClasses.get(id);
+		var v = variables.get(id);
+		for(map in [variables, publicVariables, staticVariables, customClasses])
+			if (map.exists(id))
+				return map[id];
 
 		if (_hasScriptObject) {
 			// search in object
@@ -692,7 +684,7 @@ class Interp {
 		}
 		if (doException)
 			error(EUnknownVariable(id));
-		return null;
+		return v;
 	}
 
 	function getClass(c:String):haxe.ds.Either<Class<Any>, Enum<Any>> {
@@ -907,7 +899,7 @@ class Interp {
 				throw SReturn;
 			case EFunction(params, fexpr, name, _, isPublic, isStatic, isOverride):
 				var __capturedLocals = duplicate(locals);
-				var capturedLocals:Map<String, DeclaredVar> = [];
+				var capturedLocals:Map<String, {r:Dynamic, depth:Int}> = [];
 				for(k=>e in __capturedLocals)
 					if (e != null && e.depth > 0)
 						capturedLocals.set(k, e);
@@ -947,9 +939,9 @@ class Interp {
 					}
 					var old = me.locals, depth = me.depth;
 					me.depth++;
-					me.locals = me.duplicate(capturedLocals);
+					me.locals = cast me.duplicate(capturedLocals);
 					for (i in 0...params.length)
-						me.locals.set(params[i].name, {r: args[i], depth: depth});
+						me.locals[params[i].name] = cast {r: args[i], depth: depth};
 					var r = null;
 					var oldDecl = declared.length;
 					if (inTry)
@@ -979,8 +971,8 @@ class Interp {
 					} else {
 						// function-in-function is a local function
 						declared.push({n: name, old: locals.get(name), depth: depth});
-						var ref:DeclaredVar = {r: f, depth: depth};
-						locals.set(name, ref);
+						var ref = {r: f, depth: depth};
+						locals.set(name, cast ref);
 						capturedLocals.set(name, ref); // allow self-recursion
 					}
 				}
@@ -1065,8 +1057,8 @@ class Interp {
 					restore(old);
 					inTry = oldTry;
 					// declare 'v'
-					declared.push({n: n, old: locals.get(n), depth: depth});
-					locals.set(n, {r: err, depth: depth});
+					declared.push({n: n, old: locals[n], depth: depth});
+					locals[n] = cast {r: err, depth: depth};
 					var v:Dynamic = expr(ecatch);
 					restore(old);
 					return v;
@@ -1184,13 +1176,13 @@ class Interp {
 
 	function forLoop(n, it, e) {
 		var old = declared.length;
-		declared.push({n: n, old: locals.get(n), depth: depth});
+		declared.push({n: n, old: locals[n], depth: depth});
 		var it = makeIterator(expr(it));
 		var _hasNext = it.hasNext;
 		var _next = it.next;
 		while (_hasNext()) {
 			var next = _next();
-			locals.set(n, {r: next, depth: depth});
+			locals[n] = cast {r: next, depth: depth};
 			try {
 				expr(e);
 			} catch (err:Stop) {
@@ -1208,8 +1200,8 @@ class Interp {
 
 	function forLoopKeyValue(n, it, e, ithv) {
 		var old = declared.length;
-		declared.push({n: ithv, old: locals.get(ithv), depth: depth});
-		declared.push({n: n, old: locals.get(n), depth: depth});
+		declared.push({n: ithv, old: locals[ithv], depth: depth});
+		declared.push({n: n, old: locals[n], depth: depth});
 		var it = makeKeyValueIterator(expr(it));
 		var _hasNext = it.hasNext;
 		var _next = it.next;
@@ -1345,4 +1337,24 @@ class Interp {
 	#else
 	static inline function b2i(b:Bool) return b ? 1 : 0;
 	#end
+}
+
+class HScriptVariablesKeyValueIterator {
+	public var names:Array<String> = [];
+	public var values:Array<Dynamic> = [];
+
+	public function new(names:Array<String>, values:Array<Dynamic>) {
+		this.names = names;
+		this.values = values;
+	}
+
+	@:noCompletion public var _current:Int = 0;
+	public inline function hasNext():Bool {
+		return _current < names.length;
+	}
+
+	public inline function next():{key:String, value:Dynamic} {
+		_current++;
+		return {value: values[_current], key: names[_current]};
+	}
 }
