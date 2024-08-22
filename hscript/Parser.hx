@@ -227,7 +227,7 @@ class Parser {
 		expr = Preprocessor.process(expr);
 		if(Parser.optimize)
 			expr = Optimizer.optimize(expr);
-		#if INT_VARS
+		#if HSCRIPT_INT_VARS
 		expr = Postprocessor.processvars(expr);
 		#end
 		// trace("INPUT: " + s); // useful for debugging

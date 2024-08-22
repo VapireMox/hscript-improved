@@ -94,7 +94,7 @@ class Interp {
 	public var errorHandler:Error->Void;
 	public var importFailedCallback:Array<String>->Bool;
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	public var _variablesNames:Array<String> = [];
 	public var _variables:Array<Dynamic> = [];
 	public var _locals:Array<DeclaredVar> = [];
@@ -133,7 +133,7 @@ class Interp {
 		resetVariables();
 
 	private function resetVariables() {
-		#if INT_VARS
+		#if HSCRIPT_INT_VARS
 		_variablesNames = [];
 		loadTables(0);
 
@@ -301,12 +301,12 @@ class Interp {
 
 		switch(Tools.expr(e2)) {
 			case EIdent(id):
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				var sid = _variablesNames[id];
 				#end
-				if (#if INT_VARS sid #else id #end == "Class")
+				if (#if HSCRIPT_INT_VARS sid #else id #end == "Class")
 					return Std.isOfType(expr1, Class);
-				if (#if INT_VARS sid #else id #end == "Map" || #if INT_VARS sid #else id #end == "IMap")
+				if (#if HSCRIPT_INT_VARS sid #else id #end == "Map" || #if HSCRIPT_INT_VARS sid #else id #end == "IMap")
 					return Std.isOfType(expr1, IMap);
 			default:
 		}
@@ -315,7 +315,7 @@ class Interp {
 		return expr2 != null ? Std.isOfType(expr1, expr2) : false;
 	}
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	public inline function setVar(name:String, v:Dynamic) {
 		isetVar(_variablesNames.indexOf(name), v);
 	}
@@ -344,40 +344,40 @@ class Interp {
 		var v = expr(e2);
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var l = #if INT_VARS _locals #else locals #end[id];
+				var l = #if HSCRIPT_INT_VARS _locals #else locals #end[id];
 				if (l == null) {
-					#if INT_VARS
+					#if HSCRIPT_INT_VARS
 					var sid:String = _variablesNames[id];
 					#end
 					// TODO: WHEN ADDING ENUM DEFINED THING CHANGE THIS
-					if (#if INT_VARS _variables[id] != null #else !variables.exists(id) #end && 
-						!staticVariables.exists(#if INT_VARS sid #else id #end) && !publicVariables.exists(#if INT_VARS sid #else id #end) && _hasScriptObject
+					if (#if HSCRIPT_INT_VARS _variables[id] != null #else !variables.exists(id) #end && 
+						!staticVariables.exists(#if HSCRIPT_INT_VARS sid #else id #end) && !publicVariables.exists(#if HSCRIPT_INT_VARS sid #else id #end) && _hasScriptObject
 					) {
 						if (_scriptObjectType == SObject) {
-							UnsafeReflect.setField(scriptObject, #if INT_VARS sid #else id #end, v);
+							UnsafeReflect.setField(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
 						} else {
 							if (isBypassAccessor) {
-								if (__instanceFields.contains(#if INT_VARS sid #else id #end)) {
-									UnsafeReflect.setField(scriptObject, #if INT_VARS sid #else id #end, v);
+								if (__instanceFields.contains(#if HSCRIPT_INT_VARS sid #else id #end)) {
+									UnsafeReflect.setField(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
 									return v;
 								}
 							}
 
-							if (__instanceFields.contains(#if INT_VARS sid #else id #end)) {
-								UnsafeReflect.setProperty(scriptObject, #if INT_VARS sid #else id #end, v);
-							} else if (__instanceFields.contains('set_${#if INT_VARS sid #else id #end}')) { // setter
-								UnsafeReflect.getProperty(scriptObject, 'set_${#if INT_VARS sid #else id #end}')(v);
+							if (__instanceFields.contains(#if HSCRIPT_INT_VARS sid #else id #end)) {
+								UnsafeReflect.setProperty(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
+							} else if (__instanceFields.contains('set_${#if HSCRIPT_INT_VARS sid #else id #end}')) { // setter
+								UnsafeReflect.getProperty(scriptObject, 'set_${#if HSCRIPT_INT_VARS sid #else id #end}')(v);
 							} else {
-								#if INT_VARS isetVar #else setVar #end (id, v);
+								#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 							}
 						}
 					} else {
-						#if INT_VARS isetVar #else setVar #end (id, v);
+						#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 					}
 				} else {
 					l.r = v;
 					if (l.depth == 0) {
-						#if INT_VARS isetVar #else setVar #end (id, v);
+						#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 					}
 				}
 			case EField(e, f, s):
@@ -403,24 +403,24 @@ class Interp {
 		var v:Dynamic = null;
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var l = #if INT_VARS _locals #else locals #end[id];
+				var l = #if HSCRIPT_INT_VARS _locals #else locals #end[id];
 				v = fop(expr(e1), expr(e2));
 				if (l == null) {
 					if(_hasScriptObject) {
-						#if INT_VARS
+						#if HSCRIPT_INT_VARS
 						var sid:String = _variablesNames[id];
 						#end
 						if(_scriptObjectType == SObject) {
-							UnsafeReflect.setField(scriptObject, #if INT_VARS sid #else id #end, v);
-						} else if (__instanceFields.contains(#if INT_VARS sid #else id #end)) {
-							UnsafeReflect.setProperty(scriptObject, #if INT_VARS sid #else id #end, v);
-						} else if (__instanceFields.contains('set_${#if INT_VARS sid #else id #end}')) { // setter
-							UnsafeReflect.getProperty(scriptObject, 'set_${#if INT_VARS sid #else id #end}')(v);
+							UnsafeReflect.setField(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
+						} else if (__instanceFields.contains(#if HSCRIPT_INT_VARS sid #else id #end)) {
+							UnsafeReflect.setProperty(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
+						} else if (__instanceFields.contains('set_${#if HSCRIPT_INT_VARS sid #else id #end}')) { // setter
+							UnsafeReflect.getProperty(scriptObject, 'set_${#if HSCRIPT_INT_VARS sid #else id #end}')(v);
 						} else {
-							#if INT_VARS isetVar #else setVar #end (id, v);
+							#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 						}
 					} else {
-						#if INT_VARS isetVar #else setVar #end (id, v);
+						#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 					}
 				}
 				else
@@ -454,24 +454,24 @@ class Interp {
 		var v:Dynamic = null;
 		switch (Tools.expr(e1)) {
 			case EIdent(id):
-				var l = #if INT_VARS _locals #else locals #end[id];
+				var l = #if HSCRIPT_INT_VARS _locals #else locals #end[id];
 				v = fop(aFunc, bFunc);
 				if (l == null) {
 					if(_hasScriptObject) {
-						#if INT_VARS
+						#if HSCRIPT_INT_VARS
 						var sid:String = _variablesNames[id];
 						#end
 						if(_scriptObjectType == SObject) {
-							UnsafeReflect.setField(scriptObject, #if INT_VARS sid #else id #end, v);
-						} else if (__instanceFields.contains(#if INT_VARS sid #else id #end)) {
-							UnsafeReflect.setProperty(scriptObject, #if INT_VARS sid #else id #end, v);
-						} else if (__instanceFields.contains('set_${#if INT_VARS sid #else id #end}')) { // setter
-							UnsafeReflect.getProperty(scriptObject, 'set_${#if INT_VARS sid #else id #end}')(v);
+							UnsafeReflect.setField(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
+						} else if (__instanceFields.contains(#if HSCRIPT_INT_VARS sid #else id #end)) {
+							UnsafeReflect.setProperty(scriptObject, #if HSCRIPT_INT_VARS sid #else id #end, v);
+						} else if (__instanceFields.contains('set_${#if HSCRIPT_INT_VARS sid #else id #end}')) { // setter
+							UnsafeReflect.getProperty(scriptObject, 'set_${#if HSCRIPT_INT_VARS sid #else id #end}')(v);
 						} else {
-							#if INT_VARS isetVar #else setVar #end (id, v);
+							#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 						}
 					} else {
-						#if INT_VARS isetVar #else setVar #end (id, v);
+						#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v);
 					}
 				}
 				else
@@ -506,16 +506,16 @@ class Interp {
 		#end
 		switch (e) {
 			case EIdent(id):
-				var l = #if INT_VARS _locals #else locals #end[id];
-				var v:Dynamic = (l == null) ? #if INT_VARS iresolve #else resolve #end (id) : l.r;
+				var l = #if HSCRIPT_INT_VARS _locals #else locals #end[id];
+				var v:Dynamic = (l == null) ? #if HSCRIPT_INT_VARS iresolve #else resolve #end (id) : l.r;
 				if (prefix) {
 					v += delta;
 					if (l == null)
-						#if INT_VARS isetVar #else setVar #end (id, v)
+						#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v)
 					else
 						l.r = v;
 				} else if (l == null)
-					#if INT_VARS isetVar #else setVar #end (id, v + delta)
+					#if HSCRIPT_INT_VARS isetVar #else setVar #end (id, v + delta)
 				else
 					l.r = v + delta;
 				return v;
@@ -558,7 +558,7 @@ class Interp {
 
 	public function execute(expr:Expr):Dynamic {
 		depth = 0; declared = [];
-		#if INT_VARS
+		#if HSCRIPT_INT_VARS
 		_locals = [];
 		#else
 		locals = new Map();
@@ -600,7 +600,7 @@ class Interp {
 	}
 
 	// TODO: use array.copy();
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	public function duplicate<T>(array:Array<T>):Array<T> {
 		return [for (a in array) a];
 	}
@@ -620,7 +620,7 @@ class Interp {
 	function restore(old:Int) {
 		while (declared.length > old) {
 			var d = declared.pop();
-			#if INT_VARS
+			#if HSCRIPT_INT_VARS
 			_locals[d.n] = d.old;
 			#else
 			locals.set(d.n, d.old);
@@ -647,7 +647,7 @@ class Interp {
 		#end
 	}
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	public function iresolve(id:Int, doException:Bool = true):Dynamic {
 		//var l:DeclaredVar = untyped __cpp__("this->_locals->__get(id)");//_locals[id];
 		var l:DeclaredVar = _locals[id];
@@ -742,7 +742,7 @@ class Interp {
 		var e = e.e;
 		#end
 		switch (e) {
-			#if INT_VARS
+			#if HSCRIPT_INT_VARS
 			case EInfo(info, e):
 				_variablesNames = info.variables.copy();
 				loadTables(_variablesNames.length);
@@ -753,11 +753,11 @@ class Interp {
 				return expr(e);
 			#end
 			case EClass(name, fields, extend, interfaces):
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				var className:String = _variablesNames[name];
 				#end
 
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				// TODO: Change this when we add undefined thing
 				if (_variables[name] != null)
 					error(EAlreadyExistingClass(className));
@@ -772,7 +772,7 @@ class Interp {
 					final variable:Class<Any> = variables.exists(thing) ? cast variables.get(thing) : null;
 					return variable == null ? thing : Type.getClassName(variable);
 				}
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				_variables[name] = new CustomClassHandler(this, className, fields, importVar(extend), [for (i in interfaces) importVar(i)]);
 				#else
 				customClasses.set(name, new CustomClassHandler(this, name, fields, importVar(extend), [for (i in interfaces) importVar(i)]));
@@ -851,20 +851,20 @@ class Interp {
 					#end
 				}
 			case EIdent(id):
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				return iresolve(id);
 				#else
 				return resolve(id);
 				#end
 			case EVar(n, _, e, isPublic, isStatic):
-				declared.push({n: n, old: #if INT_VARS _locals[n] #else locals.get(n) #end, depth: depth});
-				#if INT_VARS
+				declared.push({n: n, old: #if HSCRIPT_INT_VARS _locals[n] #else locals.get(n) #end, depth: depth});
+				#if HSCRIPT_INT_VARS
 				_locals[n] = {r: (e == null) ? null : expr(e), depth: depth};
 				#else
 				locals.set(n, {r: (e == null) ? null : expr(e), depth: depth});
 				#end
 				if (depth == 0) {
-					#if INT_VARS
+					#if HSCRIPT_INT_VARS
 					if(isPublic == true || isStatic == true) {
 						var varName:String = _variablesNames[n];
 						if(isStatic == true) {
@@ -968,7 +968,7 @@ class Interp {
 				returnValue = e == null ? null : expr(e);
 				throw SReturn;
 			case EFunction(params, fexpr, name, _, isPublic, isStatic, isOverride):
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				var __capturedLocals = duplicate(_locals);
 				var capturedLocals:Array<DeclaredVar> = [];
 				for(k=>e in __capturedLocals)
@@ -995,8 +995,8 @@ class Interp {
 						minParams++;
 				var f = function(args:Array<Dynamic>) {
 					if (
-						#if INT_VARS me._locals #else me.locals #end == null || 
-						#if INT_VARS me._variables #else me.variables #end == null) return null;
+						#if HSCRIPT_INT_VARS me._locals #else me.locals #end == null || 
+						#if HSCRIPT_INT_VARS me._variables #else me.variables #end == null) return null;
 
 					if (((args == null) ? 0 : args.length) != params.length) {
 						if (args.length < minParams) {
@@ -1020,18 +1020,18 @@ class Interp {
 								args2.push(args[pos++]);
 						args = args2;
 					}
-					var old = #if INT_VARS me._locals #else me.locals #end, depth = me.depth;
+					var old = #if HSCRIPT_INT_VARS me._locals #else me.locals #end, depth = me.depth;
 					me.depth++;
-					#if INT_VARS me._locals #else me.locals #end = cast me.duplicate(capturedLocals);
+					#if HSCRIPT_INT_VARS me._locals #else me.locals #end = cast me.duplicate(capturedLocals);
 					for (i in 0...params.length)
-						#if INT_VARS me._locals #else me.locals #end[params[i].name] = cast {r: args[i], depth: depth};
+						#if HSCRIPT_INT_VARS me._locals #else me.locals #end[params[i].name] = cast {r: args[i], depth: depth};
 					var r = null;
 					var oldDecl = declared.length;
 					if (inTry)
 						try {
 							r = me.exprReturn(fexpr);
 						} catch (e:Dynamic) {
-							#if INT_VARS me._locals #else me.locals #end = old;
+							#if HSCRIPT_INT_VARS me._locals #else me.locals #end = old;
 							me.depth = depth;
 							#if neko
 							neko.Lib.rethrow(e);
@@ -1042,12 +1042,12 @@ class Interp {
 					else
 						r = me.exprReturn(fexpr);
 					restore(oldDecl);
-					#if INT_VARS me._locals #else me.locals #end = old;
+					#if HSCRIPT_INT_VARS me._locals #else me.locals #end = old;
 					me.depth = depth;
 					return r;
 				};
 				var f = Reflect.makeVarArgs(f);
-				#if INT_VARS
+				#if HSCRIPT_INT_VARS
 				if (name != null) {
 					if (depth == 0) {
 						// global function
@@ -1140,7 +1140,7 @@ class Interp {
 				var a = new Array();
 				for (i in 0...params.length)
 					a.push(expr(params[i]));
-				return cnew(#if INT_VARS _variablesNames[cl] #else cl #end, a);
+				return cnew(#if HSCRIPT_INT_VARS _variablesNames[cl] #else cl #end, a);
 			case EThrow(e):
 				throw expr(e);
 			case ETry(e, n, _, ecatch):
@@ -1160,8 +1160,8 @@ class Interp {
 					restore(old);
 					inTry = oldTry;
 					// declare 'v'
-					declared.push({n: n, old: #if INT_VARS _locals #else locals #end[n], depth: depth});
-					#if INT_VARS _locals #else locals #end[n] = cast {r: err, depth: depth};
+					declared.push({n: n, old: #if HSCRIPT_INT_VARS _locals #else locals #end[n], depth: depth});
+					#if HSCRIPT_INT_VARS _locals #else locals #end[n] = cast {r: err, depth: depth};
 					var v:Dynamic = expr(ecatch);
 					restore(old);
 					return v;
@@ -1280,13 +1280,13 @@ class Interp {
 
 	function forLoop(n, it, e) {
 		var old = declared.length;
-		declared.push({n: n, old: #if INT_VARS _locals #else locals #end[n], depth: depth});
+		declared.push({n: n, old: #if HSCRIPT_INT_VARS _locals #else locals #end[n], depth: depth});
 		var it = makeIterator(expr(it));
 		var _hasNext = it.hasNext;
 		var _next = it.next;
 		while (_hasNext()) {
 			var next = _next();
-			#if INT_VARS _locals #else locals #end[n] = cast {r: next, depth: depth};
+			#if HSCRIPT_INT_VARS _locals #else locals #end[n] = cast {r: next, depth: depth};
 			try {
 				expr(e);
 			} catch (err:Stop) {
@@ -1304,15 +1304,15 @@ class Interp {
 
 	function forLoopKeyValue(n, it, e, ithv) {
 		var old = declared.length;
-		declared.push({n: ithv, old: #if INT_VARS _locals #else locals #end[ithv], depth: depth});
-		declared.push({n: n, old: #if INT_VARS _locals #else locals #end[n], depth: depth});
+		declared.push({n: ithv, old: #if HSCRIPT_INT_VARS _locals #else locals #end[ithv], depth: depth});
+		declared.push({n: n, old: #if HSCRIPT_INT_VARS _locals #else locals #end[n], depth: depth});
 		var it = makeKeyValueIterator(expr(it));
 		var _hasNext = it.hasNext;
 		var _next = it.next;
 		while (_hasNext()) {
 			var next = _next();
-			#if INT_VARS _locals #else locals #end[ithv] = cast {r: next.key, depth: depth};
-			#if INT_VARS _locals #else locals #end[n] = cast {r: next.value, depth: depth};
+			#if HSCRIPT_INT_VARS _locals #else locals #end[ithv] = cast {r: next.key, depth: depth};
+			#if HSCRIPT_INT_VARS _locals #else locals #end[n] = cast {r: next.value, depth: depth};
 			try {
 				expr(e);
 			} catch (err:Stop) {
@@ -1436,7 +1436,7 @@ class Interp {
 		return (c is IHScriptCustomConstructor) ? cast(c, IHScriptCustomConstructor).hnew(args) : Type.createInstance(c, args);
 	}
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	inline function loadTables(len:Int) {
 		_variables = cast new haxe.ds.Vector<Dynamic>(len);
 		_locals = cast new haxe.ds.Vector<Dynamic>(len);
@@ -1471,7 +1471,7 @@ class HScriptVariablesKeyValueIterator {
 	}
 }
 
-#if INT_VARS
+#if HSCRIPT_INT_VARS
 class HScriptVariables {
 	public var defaults:Map<String, Dynamic> = [];
 	public var usedefaults:Bool = true;

@@ -579,7 +579,7 @@ class Printer {
 				add(" : ");
 				addType(t);
 				add(")");
-			#if INT_VARS
+			#if HSCRIPT_INT_VARS
 			case EInfo(_, e):
 				expr(e);
 			#end

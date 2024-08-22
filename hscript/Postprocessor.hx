@@ -17,7 +17,7 @@ class Postprocessor {
 		#end
 	}
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	public static function processvars(e:Expr, ?vars:Array<String>) {
 		if(vars == null) vars = [];
 		for(v in getvars(e)) vars.push(v);

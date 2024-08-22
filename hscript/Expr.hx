@@ -105,7 +105,7 @@ enum Expr
 	EImport( c : String, mode: KImportMode );
 	EClass( name:VarN, fields:Array<Expr>, ?extend:String, interfaces:Array<String> );
 
-	#if INT_VARS
+	#if HSCRIPT_INT_VARS
 	EInfo( info: InfoClass, e: Expr );
 	#end
 }
@@ -269,7 +269,7 @@ enum abstract Unop(UInt8) {
 	var OpSpread;
 }
 
-#if INT_VARS
+#if HSCRIPT_INT_VARS
 class InfoClass {
 	public var variables:Array<String>;
 
@@ -394,7 +394,7 @@ typedef VarDecl = {
 	var type : Null<CType>;
 }
 
-#if INT_VARS
+#if HSCRIPT_INT_VARS
 abstract VarN(Dynamic) from Int from String to Int to String {}
 #else
 typedef VarN = String;

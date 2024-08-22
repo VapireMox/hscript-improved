@@ -29,7 +29,7 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 	}
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
-		#if INT_VARS
+		#if HSCRIPT_INT_VARS
 		throw "todo: do all this lmao -lunar";
 		return null;
 		#else
