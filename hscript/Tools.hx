@@ -63,7 +63,7 @@ class Tools {
 			case EMeta(name, args, e): if( args != null ) for( a in args ) f(a); f(e);
 			case ECheckType(e,_): f(e);
 			#if HSCRIPT_INT_VARS
-			case EInfo(info, e): f(e);
+			//case EInfo(info, e): f(e);
 			#end
 		}
 	}
@@ -108,7 +108,7 @@ class Tools {
 			case EMeta(name, args, e): if( args != null ) for( a in args ) rec(a); rec(e);
 			case ECheckType(e,_): rec(e);
 			#if HSCRIPT_INT_VARS
-			case EInfo(info, e): rec(e);
+			//case EInfo(info, e): rec(e);
 			#end
 		}
 	}
@@ -144,7 +144,7 @@ class Tools {
 			case EImport(c, m): EImport(c, m);
 			case EClass(name, el, extend, interfaces): EClass(name, [for( e in el ) f(e)], extend, interfaces);
 			#if HSCRIPT_INT_VARS
-			case EInfo(info, e): EInfo(info, f(e));
+			//case EInfo(info, e): EInfo(info, f(e));
 			#end
 		}
 		return mk(edef, e);
