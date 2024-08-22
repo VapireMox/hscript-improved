@@ -57,9 +57,14 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 			}
 		}
 
-		// ! lunar do NOT forget you commented this
-		// ! Thank u past lunar ur awesome :D
+		var comparisonMap = new Map();
+		for(key => value in interp.variables) {
+			comparisonMap.set(key, value);
+		}
+
 		_class.__custom__variables = interp.variables;
+
+		//trace(fields);
 
 		for(expr in fields) {
 			@:privateAccess
@@ -70,13 +75,33 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 
 		_class.__interp = interp; // TODO: Remove
 		interp.scriptObject = _class;
+		// get only variables that were not set before
+		var classVariables = [for(key => value in interp.variables) if(!comparisonMap.exists(key) || comparisonMap[key] != value) key => value];
+		for(variable => value in classVariables) {
+			if(variable == "this" || variable == "super") continue;
+			@:privateAccess
+			if(!interp.__instanceFields.contains(variable)) {
+				interp.__instanceFields.push(variable);
+			}
+		}
+
+		//trace([for(key => value in classVariables) key]);
+		//@:privateAccess
+		//trace(interp.__instanceFields);
+
+		_class.__allowSetGet = false;
 
 		for(variable => value in interp.variables) {
 			if(variable == "this") continue;
 
 			if(variable.startsWith("set_") || variable.startsWith("get_")) {
-				_class.__allowSetGet = false;
+				_class.__allowSetGet = true;
 			}
+		}
+
+		var newFunc = interp.variables.get("new");
+		if(newFunc != null) {
+			UnsafeReflect.callMethodUnsafe(null, newFunc, args);
 		}
 
 		var newFunc = interp.variables.get("new");
@@ -130,6 +155,6 @@ class TemplateClass implements IHScriptCustomClassBehaviour implements IHScriptC
 	}
 }
 
-class StaticHandler {
+final class StaticHandler {
 	public function new() {}
 }

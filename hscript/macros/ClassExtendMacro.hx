@@ -187,10 +187,10 @@ class ClassExtendMacro {
 							overrideExpr = macro {
 								var name:String = $v{name};
 
-								if (__interp != null) {
-									if (__custom__variables.exists(name)) {
+								if (__custom__variables != null) {
+									if(__custom__variables.exists(name)) {
 										var v:Dynamic = null;
-										if(Reflect.isFunction(v = __custom__variables.get(name))) {
+										if (Reflect.isFunction(v = __custom__variables.get(name))) {
 											return v($a{arguments});
 										}
 									}
@@ -201,10 +201,10 @@ class ClassExtendMacro {
 							overrideExpr = macro {
 								var name:String = $v{name};
 
-								if (__interp != null) {
-									if (__custom__variables.exists(name)) {
+								if (__custom__variables != null) {
+									if(__custom__variables.exists(name)) {
 										var v:Dynamic = null;
-										if(Reflect.isFunction(v = __custom__variables.get(name))) {
+										if (Reflect.isFunction(v = __custom__variables.get(name))) {
 											v($a{arguments});
 											return;
 										}
@@ -434,7 +434,7 @@ class ClassExtendMacro {
 						__custom__variables.set(name, val);
 						return val;
 					}
-					return super.hset(name, val);
+					return super.hset(this, name);
 				}
 			} else {
 				macro {

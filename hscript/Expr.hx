@@ -296,14 +296,10 @@ class ObjectField {
 	}
 }
 
-class SwitchCase {
+@:structInit
+final class SwitchCase {
 	public var values : Array<Expr>;
 	public var expr : Expr;
-
-	public function new(values, expr) {
-		this.values = values;
-		this.expr = expr;
-	}
 }
 
 //typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };
