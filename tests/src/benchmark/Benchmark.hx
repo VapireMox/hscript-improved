@@ -11,7 +11,10 @@ class Benchmark extends HScriptRunner {
 
 	public function new(name:String, iterations:Int) {
 		super();
+		doBenchmark(name, iterations);
+	}
 
+	public function doBenchmark(name:String, iterations:Int) {
 		haxeTimes = cast new haxe.ds.Vector<Float>(iterations);
 		hscriptTimes = cast new haxe.ds.Vector<Float>(iterations);
 
