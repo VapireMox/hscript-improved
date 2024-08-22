@@ -73,8 +73,8 @@ enum Expr
 #end
 {
 	EConst( c : Const );
-	EIdent( v : String );
-	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool );
+	EIdent( v : VarN );
+	EVar( n : VarN, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool );
 	EParent( e : Expr, ?noOptimize : Bool );
 	EBlock( e : Array<Expr> );
 	EField( e : Expr, f : String , ?safe : Bool );
@@ -83,18 +83,18 @@ enum Expr
 	ECall( e : Expr, params : Array<Expr> );
 	EIf( cond : Expr, e1 : Expr, ?e2 : Expr );
 	EWhile( cond : Expr, e : Expr );
-	EFor( v : String, it : Expr, e : Expr);
-	EForKeyValue( v : String, it : Expr, e : Expr, ithv: String);
+	EFor( v : VarN, it : Expr, e : Expr);
+	EForKeyValue( v : VarN, it : Expr, e : Expr, ithv: VarN);
 	EBreak;
 	EContinue;
-	EFunction( args : Array<Argument>, e : Expr, ?name : String, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );
+	EFunction( args : Array<Argument>, e : Expr, ?name : VarN, ?ret : CType, ?isPublic : Bool, ?isStatic : Bool, ?isOverride : Bool );
 	EReturn( ?e : Expr );
 	EArray( e : Expr, index : Expr );
 	EMapDecl( type: MapType, keys: Array<Expr>, values: Array<Expr> );
 	EArrayDecl( e : Array<Expr> );
-	ENew( cl : String, params : Array<Expr> );
+	ENew( cl : VarN, params : Array<Expr> );
 	EThrow( e : Expr );
-	ETry( e : Expr, v : String, t : Null<CType>, ecatch : Expr );
+	ETry( e : Expr, v : VarN, t : Null<CType>, ecatch : Expr );
 	EObject( fl : Array<ObjectField> );
 	ETernary( cond : Expr, e1 : Expr, e2 : Expr );
 	ESwitch( e : Expr, cases : Array<SwitchCase>, ?defaultExpr : Expr );
@@ -103,10 +103,10 @@ enum Expr
 	ECheckType( e : Expr, t : CType );
 
 	EImport( c : String, mode: KImportMode );
-	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String> );
+	EClass( name:VarN, fields:Array<Expr>, ?extend:String, interfaces:Array<String> );
 
-	#if HSCRIPT_INT_VARS
-	//EInfo( info: InfoClass, e: Expr );
+	#if !HSCRIPT_NO_INT_VARS
+	EInfo( info: InfoClass, e: Expr );
 	#end
 }
 
@@ -269,14 +269,14 @@ enum abstract Unop(UInt8) {
 	var OpSpread;
 }
 
-#if HSCRIPT_INT_VARS
-/*class InfoClass {
+#if !HSCRIPT_NO_INT_VARS
+class InfoClass {
 	public var variables:Array<String>;
 
 	public function new(variables:Array<String>) {
 		this.variables = variables;
 	}
-}*/
+}
 #end
 
 enum KImportMode {
@@ -304,7 +304,7 @@ final class SwitchCase {
 
 //typedef Argument = { name : String, ?t : CType, ?opt : Bool, ?value : Expr };
 class Argument {
-	public var name : String;
+	public var name : VarN;
 	public var t : Null<CType>;
 	public var opt : Bool;
 	public var value : Null<Expr>;
@@ -389,3 +389,9 @@ typedef VarDecl = {
 	var expr : Null<Expr>;
 	var type : Null<CType>;
 }
+
+#if !HSCRIPT_NO_INT_VARS
+abstract VarN(Dynamic) from Int from String to Int to String {}
+#else
+typedef VarN = String;
+#end

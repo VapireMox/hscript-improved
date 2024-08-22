@@ -204,16 +204,16 @@ class Printer {
 		return buf.toString();
 	}
 
-	function getVar(v:String) {
+	function getVar(v:VarN) {
 		if( v == null ) {
 			return ("??NULL??");
 		}
 
-		//if(v is Int) {
-		//	return ("$" + v);
-		//} else {
+		if(v is Int) {
+			return ("$" + v);
+		} else {
 			return (v);
-		//}
+		}
 	}
 
 	public static function getBinaryOp(op:Binop) {
@@ -579,9 +579,9 @@ class Printer {
 				add(" : ");
 				addType(t);
 				add(")");
-			#if HSCRIPT_INT_VARS
-			//case EInfo(_, e):
-			//	expr(e);
+			#if !HSCRIPT_NO_INT_VARS
+			case EInfo(_, e):
+				expr(e);
 			#end
 		}
 	}
