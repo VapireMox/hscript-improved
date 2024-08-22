@@ -10,13 +10,13 @@ class Main {
 	static function main() {
 		#if BENCHMARK
 		Sys.println("Running benchmark");
-		
+
 		//new Benchmark("Test", 1000);
 		var haxeTotalTime:Float = 0;
 		var hscriptTotalTime:Float = 0;
 
 		var haxeTimes:Array<Float> = [];
-		var hscriptTimes:Array<Float> = [];		
+		var hscriptTimes:Array<Float> = [];
 
 		var iterations:Int = 10;
 		for (i in 0...iterations) {
@@ -28,10 +28,10 @@ class Main {
 			haxeTotalTime += benchmark.haxeTotalTime;
 			hscriptTotalTime += benchmark.hscriptTotalTime;
 		}
-		
+
 		haxeTimes.sort((a, b) -> return a > b ? 1 : -1);
 		hscriptTimes.sort((a, b) -> return a > b ? 1 : -1);
-		
+
 		var slowestHaxeTime:Float = haxeTimes[haxeTimes.length-1];
 		var slowestHscriptTime:Float = hscriptTimes[hscriptTimes.length-1];
 		var fastestHaxeTime:Float = haxeTimes[0];
