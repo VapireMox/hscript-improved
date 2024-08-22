@@ -17,12 +17,11 @@ class Postprocessor {
 		#end
 	}
 
+	#if INT_VARS
 	public static function processvars(e:Expr, ?vars:Array<String>) {
 		if(vars == null) vars = [];
 		for(v in getvars(e)) vars.push(v);
         e = _processvars(e, vars);
-
-		//trace(vars);
 
 		return mk(EInfo(new InfoClass(vars), e), e);
 	}
@@ -33,14 +32,10 @@ class Postprocessor {
 		var doExtra = true;
         var e = switch (expr(e)) {
             case EIdent(v) if (v is String):
-				//trace(v  +" -> " + vars.indexOf(v));
                 mk(EIdent(vars.indexOf(v)), e);
             case EVar(n, t, _e, p, s) if (n is String):
-				//trace(n + " -> " + vars.indexOf(n));
                 mk(EVar(vars.indexOf(n), t, _e, p, s), e);
             case EImport(c, IAs(n)) if (n is String):
-				//trace(n + " -> " + vars.indexOf(n));
-                // IAsReturn, doesnt store it in variables array, only returns the import as a expression like value
                 mk(EVar(vars.indexOf(n), null, mk(EImport(c, IAsReturn), e), false, false), e);
             case EFunction(args, _e, n, r, p, s, o) if (n is String):
 				var _args:Array<Argument> = [
@@ -63,11 +58,8 @@ class Postprocessor {
             case ETry(_e, v, t, ec) if (v is String):
                 mk(ETry(_e, vars.indexOf(v), t, ec), e);
             case EFor(v, it, _e) if (v is String):
-				//trace(v + " -> " + vars.indexOf(v));
                 mk(EFor(vars.indexOf(v), it, _e), e);
             case EForKeyValue(v, it, _e, ithv) if (v is String && ithv is String):
-				//trace(v + " -> " + vars.indexOf(v));
-				//trace(ithv + " -> " + vars.indexOf(ithv));
                 mk(EForKeyValue(vars.indexOf(v), it, _e, vars.indexOf(ithv)), e);
             default: {
 				doExtra = false;
@@ -78,8 +70,6 @@ class Postprocessor {
 		e = Tools.map(e, function(e) {
 			return _processvars(e, vars);
 		});
-
-		//if(doExtra) e = _processvars(e, vars);
 
 		return e;
     }
@@ -113,4 +103,5 @@ class Postprocessor {
 		});
 		return vars;
 	}
+	#end
 }

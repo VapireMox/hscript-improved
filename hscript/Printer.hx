@@ -266,321 +266,323 @@ class Printer {
 		// TODO: make else if print correctly
 
 		switch( Tools.expr(e) ) {
-		case EImport(c, mode):
-			add("import " + c);
-			switch(mode) {
-				case IAs(name): add(' as $name');
-				case IAll: add('.*');
-				default:
-			}
-		case EClass(name, fields, extend, interfaces):
-			add('class ${getVar(name)}');
-			if (extend != null)
-				add(' extends $extend');
-			for(_interface in interfaces) {
-				add(' implements $_interface');
-			}
-			add(' {\n');
-			tabs += "\t";
-			// TODO: Print fields
-			//for(field in fields) {
-			//	expr(field);
-			//}
-
-			tabs = tabs.substr(1);
-			add("}");
-		case EConst(c):
-			switch( c ) {
-			case CInt(i): add(i);
-			case CFloat(f): add(f);
-			case CString(s):
-				add('"');
-				add(getEscapedString(s));
-				add('"');
-			}
-		case EIdent(v):
-			add(getVar(v));
-		case EVar(n, t, e): // TODO: static, public, override
-			add("var " + getVar(n));
-			if( t != null )
-				addType(t);
-			else
-				switch( Tools.expr(e) ) {
-					case EMapDecl(type, _, _):
-						add(" : Map<");
-						switch( type ) {
-							case ObjectMap: add("Dynamic");
-							case StringMap: add("String");
-							case EnumMap: add("EnumValue");
-							case IntMap: add("Int");
-							case UnknownMap: add("?");
-							case Null: add("Null");
-						}
-						add(", Dynamic>");
+			case EImport(c, mode):
+				add("import " + c);
+				switch(mode) {
+					case IAs(name): add(' as $name');
+					case IAll: add('.*');
 					default:
 				}
-			if( e != null ) {
-				add(" = ");
-				expr(e);
-			}
-		case EParent(e):
-			add("("); expr(e); add(")");
-		case EBlock(el):
-			if( el.length == 0 ) {
-				add("{}");
-			} else {
+			case EClass(name, fields, extend, interfaces):
+				add('class ${getVar(name)}');
+				if (extend != null)
+					add(' extends $extend');
+				for(_interface in interfaces) {
+					add(' implements $_interface');
+				}
+				add(' {\n');
 				tabs += "\t";
-				add("{\n");
-				for( e in el ) {
-					add(tabs);
+				// TODO: Print fields
+				//for(field in fields) {
+				//	expr(field);
+				//}
+
+				tabs = tabs.substr(1);
+				add("}");
+			case EConst(c):
+				switch( c ) {
+				case CInt(i): add(i);
+				case CFloat(f): add(f);
+				case CString(s):
+					add('"');
+					add(getEscapedString(s));
+					add('"');
+				}
+			case EIdent(v):
+				add(getVar(v));
+			case EVar(n, t, e): // TODO: static, public, override
+				add("var " + getVar(n));
+				if( t != null )
+					addType(t);
+				else
+					switch( Tools.expr(e) ) {
+						case EMapDecl(type, _, _):
+							add(" : Map<");
+							switch( type ) {
+								case ObjectMap: add("Dynamic");
+								case StringMap: add("String");
+								case EnumMap: add("EnumValue");
+								case IntMap: add("Int");
+								case UnknownMap: add("?");
+								case Null: add("Null");
+							}
+							add(", Dynamic>");
+						default:
+					}
+				if( e != null ) {
+					add(" = ");
 					expr(e);
+				}
+			case EParent(e):
+				add("("); expr(e); add(")");
+			case EBlock(el):
+				if( el.length == 0 ) {
+					add("{}");
+				} else {
+					tabs += "\t";
+					add("{\n");
+					for( e in el ) {
+						add(tabs);
+						expr(e);
+						add(";\n");
+					}
+					tabs = tabs.substr(1);
+					add(tabs);
+					add("}");
+				}
+			case EField(e, f, s):
+				expr(e);
+				add((s == true ? "?." : ".") + f);
+			case EBinop(op, e1, e2):
+				/*var op1 = switch(Tools.expr(e1)) {
+					case EBinop(op, _, _): op;
+					case EConst(_): "_";
+					case EIdent(_): "_";
+					default: null;
+				}
+				var op2 = switch(Tools.expr(e2)) {
+					case EBinop(op, _, _): op;
+					case EConst(_): "_";
+					case EIdent(_): "_";
+					default: null;
+				}
+				var paran = Tools.checkOpPrecedence(op, op1, op2);*/
+				var paran = 2;
+
+				var op = getBinaryOp(op);
+
+				if(paran == 0 || paran == 2) {
+					add("(");
+					expr(e1);
+					add(")");
+				} else {
+					expr(e1);
+				}
+				if(op == "...")
+					add(op);
+				else
+					add(" " + op + " ");
+				if(paran == 1 || paran == 2) {
+					add("(");
+					expr(e2);
+					add(")");
+				} else {
+					expr(e2);
+				}
+			case EUnop(op, pre, e):
+				var op = getUnaryOp(op);
+
+				if( pre ) {
+					add(op);
+					expr(e);
+				} else {
+					expr(e);
+					add(op);
+				}
+			case ECall(e, args):
+				if( e == null )
+					expr(e);
+				else switch( Tools.expr(e) ) {
+					case EField(_), EIdent(_), EConst(_):
+						expr(e);
+					default:
+						add("(");
+						expr(e);
+						add(")");
+				}
+				add("(");
+				var first = true;
+				for( a in args ) {
+					if( first ) first = false else add(", ");
+					expr(a);
+				}
+				add(")");
+			case EIf(cond,e1,e2):
+				add("if( ");
+				expr(cond);
+				add(" )");
+				var wasBlock = block(e1, true);
+
+				if( e2 != null ) {
+					if(!wasBlock) add("\n" + tabs);
+					add(" else ");
+					block(e2);
+				}
+			case EWhile(cond,e):
+				add("while( ");
+				expr(cond);
+				add(" )");
+				block(e, true);
+			case EDoWhile(cond,e):
+				add("do");
+				block(e, true);
+				add(" while ( ");
+				expr(cond);
+				add(" )");
+			case EFor(v, it, e):
+				add("for( "+getVar(v)+" in ");
+				expr(it);
+				add(" )");
+				block(e, true);
+			case EForKeyValue(v, it, e, ithv):
+				add("for( "+getVar(ithv)+" => "+getVar(v)+" in ");
+				expr(it);
+				add(" )");
+				block(e, true);
+			case EBreak:
+				add("break");
+			case EContinue:
+				add("continue");
+			case EFunction(params, e, name, ret): // TODO: static, public, override
+				add("function");
+				if( name != null )
+					add(" " + getVar(name));
+				add("(");
+				var first = true;
+				for( a in params ) {
+					if( first ) first = false else add(", ");
+					if( a.opt ) add("?");
+					add(getVar(a.name));
+					addType(a.t);
+				}
+				add(")");
+				addType(ret);
+				add(" ");
+				expr(e);
+			case EReturn(e):
+				add("return");
+				if( e != null ) {
+					add(" ");
+					expr(e);
+				}
+			case EArray(e,index):
+				expr(e);
+				add("[");
+				expr(index);
+				add("]");
+			case EMapDecl(type, keys, values):
+				add("[");
+				var first = true;
+				for( i in 0...keys.length ) {
+					if( first ) first = false else add(", ");
+					expr(keys[i]);
+					add(" => ");
+					expr(values[i]);
+				}
+				add("]");
+			case EArrayDecl(el):
+				add("[");
+				var first = true;
+				for( e in el ) {
+					if( first ) first = false else add(", ");
+					expr(e);
+				}
+				add("]");
+			case ENew(cl, args):
+				add("new " + getVar(cl) + "(");
+				var first = true;
+				for( e in args ) {
+					if( first ) first = false else add(", ");
+					expr(e);
+				}
+				add(")");
+			case EThrow(e):
+				add("throw ");
+				expr(e);
+			case ETry(e, v, t, ecatch):
+				add("try");
+				var wasBlock = block(e);
+				if( !wasBlock ) {
+					add("\n" + tabs);
+				} else add(" ");
+				add("catch( " + v);
+				addType(t);
+				add(" )");
+				block(ecatch);
+			case EObject(fl):
+				if( fl.length == 0 ) {
+					add("{}");
+				} else {
+					tabs += "\t";
+					add("{\n");
+					for( i=>f in fl ) {
+						add(tabs);
+						var name = isJson(f.name) ? "\"" + f.name + "\"" : f.name;
+						add(name+" : ");
+						expr(f.e);
+						if( i != fl.length - 1 ) add(",");
+						add("\n");
+					}
+					tabs = tabs.substr(1);
+					add(tabs);
+					add("}");
+				}
+			case ETernary(c,e1,e2):
+				expr(c);
+				add(" ? ");
+				expr(e1);
+				add(" : ");
+				expr(e2);
+			case ESwitch(e, cases, def):
+				add("switch( ");
+				expr(e);
+				add(" ) {\n");
+				tabs += "\t";
+				for( c in cases ) {
+					add(tabs);
+					add("case ");
+					var first = true;
+					for( v in c.values ) {
+						if( first ) first = false else add(", ");
+						expr(v);
+					}
+					add(":");
+					block(c.expr, true);
+					add(";\n");
+				}
+				if( def != null ) {
+					add(tabs);
+					add("default: ");
+					block(def, true);
 					add(";\n");
 				}
 				tabs = tabs.substr(1);
 				add(tabs);
 				add("}");
-			}
-		case EField(e, f, s):
-			expr(e);
-			add((s == true ? "?." : ".") + f);
-		case EBinop(op, e1, e2):
-			/*var op1 = switch(Tools.expr(e1)) {
-				case EBinop(op, _, _): op;
-				case EConst(_): "_";
-				case EIdent(_): "_";
-				default: null;
-			}
-			var op2 = switch(Tools.expr(e2)) {
-				case EBinop(op, _, _): op;
-				case EConst(_): "_";
-				case EIdent(_): "_";
-				default: null;
-			}
-			var paran = Tools.checkOpPrecedence(op, op1, op2);*/
-			var paran = 2;
-
-			var op = getBinaryOp(op);
-
-			if(paran == 0 || paran == 2) {
-				add("(");
-				expr(e1);
-				add(")");
-			} else {
-				expr(e1);
-			}
-			if(op == "...")
-				add(op);
-			else
-				add(" " + op + " ");
-			if(paran == 1 || paran == 2) {
-				add("(");
-				expr(e2);
-				add(")");
-			} else {
-				expr(e2);
-			}
-		case EUnop(op, pre, e):
-			var op = getUnaryOp(op);
-
-			if( pre ) {
-				add(op);
-				expr(e);
-			} else {
-				expr(e);
-				add(op);
-			}
-		case ECall(e, args):
-			if( e == null )
-				expr(e);
-			else switch( Tools.expr(e) ) {
-				case EField(_), EIdent(_), EConst(_):
-					expr(e);
-				default:
+			case EMeta(name, args, e):
+				add("@");
+				add(name);
+				if( args != null && args.length > 0 ) {
 					add("(");
-					expr(e);
+					var first = true;
+					for( a in args ) {
+						if( first ) first = false else add(", ");
+						expr(e);
+					}
 					add(")");
-			}
-			add("(");
-			var first = true;
-			for( a in args ) {
-				if( first ) first = false else add(", ");
-				expr(a);
-			}
-			add(")");
-		case EIf(cond,e1,e2):
-			add("if( ");
-			expr(cond);
-			add(" )");
-			var wasBlock = block(e1, true);
-
-			if( e2 != null ) {
-				if(!wasBlock) add("\n" + tabs);
-				add(" else ");
-				block(e2);
-			}
-		case EWhile(cond,e):
-			add("while( ");
-			expr(cond);
-			add(" )");
-			block(e, true);
-		case EDoWhile(cond,e):
-			add("do");
-			block(e, true);
-			add(" while ( ");
-			expr(cond);
-			add(" )");
-		case EFor(v, it, e):
-			add("for( "+getVar(v)+" in ");
-			expr(it);
-			add(" )");
-			block(e, true);
-		case EForKeyValue(v, it, e, ithv):
-			add("for( "+getVar(ithv)+" => "+getVar(v)+" in ");
-			expr(it);
-			add(" )");
-			block(e, true);
-		case EBreak:
-			add("break");
-		case EContinue:
-			add("continue");
-		case EFunction(params, e, name, ret): // TODO: static, public, override
-			add("function");
-			if( name != null )
-				add(" " + getVar(name));
-			add("(");
-			var first = true;
-			for( a in params ) {
-				if( first ) first = false else add(", ");
-				if( a.opt ) add("?");
-				add(getVar(a.name));
-				addType(a.t);
-			}
-			add(")");
-			addType(ret);
-			add(" ");
-			expr(e);
-		case EReturn(e):
-			add("return");
-			if( e != null ) {
+				}
 				add(" ");
 				expr(e);
-			}
-		case EArray(e,index):
-			expr(e);
-			add("[");
-			expr(index);
-			add("]");
-		case EMapDecl(type, keys, values):
-			add("[");
-			var first = true;
-			for( i in 0...keys.length ) {
-				if( first ) first = false else add(", ");
-				expr(keys[i]);
-				add(" => ");
-				expr(values[i]);
-			}
-			add("]");
-		case EArrayDecl(el):
-			add("[");
-			var first = true;
-			for( e in el ) {
-				if( first ) first = false else add(", ");
-				expr(e);
-			}
-			add("]");
-		case ENew(cl, args):
-			add("new " + getVar(cl) + "(");
-			var first = true;
-			for( e in args ) {
-				if( first ) first = false else add(", ");
-				expr(e);
-			}
-			add(")");
-		case EThrow(e):
-			add("throw ");
-			expr(e);
-		case ETry(e, v, t, ecatch):
-			add("try");
-			var wasBlock = block(e);
-			if( !wasBlock ) {
-				add("\n" + tabs);
-			} else add(" ");
-			add("catch( " + v);
-			addType(t);
-			add(" )");
-			block(ecatch);
-		case EObject(fl):
-			if( fl.length == 0 ) {
-				add("{}");
-			} else {
-				tabs += "\t";
-				add("{\n");
-				for( i=>f in fl ) {
-					add(tabs);
-					var name = isJson(f.name) ? "\"" + f.name + "\"" : f.name;
-					add(name+" : ");
-					expr(f.e);
-					if( i != fl.length - 1 ) add(",");
-					add("\n");
-				}
-				tabs = tabs.substr(1);
-				add(tabs);
-				add("}");
-			}
-		case ETernary(c,e1,e2):
-			expr(c);
-			add(" ? ");
-			expr(e1);
-			add(" : ");
-			expr(e2);
-		case ESwitch(e, cases, def):
-			add("switch( ");
-			expr(e);
-			add(" ) {\n");
-			tabs += "\t";
-			for( c in cases ) {
-				add(tabs);
-				add("case ");
-				var first = true;
-				for( v in c.values ) {
-					if( first ) first = false else add(", ");
-					expr(v);
-				}
-				add(":");
-				block(c.expr, true);
-				add(";\n");
-			}
-			if( def != null ) {
-				add(tabs);
-				add("default: ");
-				block(def, true);
-				add(";\n");
-			}
-			tabs = tabs.substr(1);
-			add(tabs);
-			add("}");
-		case EMeta(name, args, e):
-			add("@");
-			add(name);
-			if( args != null && args.length > 0 ) {
+			case ECheckType(e, t):
 				add("(");
-				var first = true;
-				for( a in args ) {
-					if( first ) first = false else add(", ");
-					expr(e);
-				}
+				expr(e);
+				add(" : ");
+				addType(t);
 				add(")");
-			}
-			add(" ");
-			expr(e);
-		case ECheckType(e, t):
-			add("(");
-			expr(e);
-			add(" : ");
-			addType(t);
-			add(")");
-		case EInfo(_, e):
-			expr(e);
+			#if INT_VARS
+			case EInfo(_, e):
+				expr(e);
+			#end
 		}
 	}
 

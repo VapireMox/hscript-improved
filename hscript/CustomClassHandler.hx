@@ -29,7 +29,10 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 	}
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
-		/*
+		#if INT_VARS
+		throw "todo: do all this lmao -lunar";
+		return null;
+		#else
 		var interp = new Interp();
 		interp.errorHandler = ogInterp.errorHandler;
 
@@ -55,7 +58,8 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 		}
 
 		// ! lunar do NOT forget you commented this
-		// _class.__custom__variables = interp.variables;
+		// ! Thank u past lunar ur awesome :D
+		_class.__custom__variables = interp.variables;
 
 		for(expr in fields) {
 			@:privateAccess
@@ -79,9 +83,8 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 		if(newFunc != null) {
 			UnsafeReflect.callMethodUnsafe(null, newFunc, args);
 		}
-		*/
-		throw "todo: do all this lmao -lunar";
-		return null;
+		return _class;
+		#end
 	}
 
 	public function toString():String {
