@@ -211,6 +211,15 @@ class ClassExtendMacro {
 					continue;
 				if (f.name == "new") {
 					hasNew = true;
+					switch (f.kind) {
+						case FFun(fn):
+							var constructor:Field = buildConstructor(fn.args);
+							
+							shadowClass.fields.push(constructor);
+							definedFields.push(f.name);
+						default:
+							continue;
+					}
 					continue;
 				}
 				if (f.name.startsWith(FUNC_PREFIX))
@@ -254,6 +263,11 @@ class ClassExtendMacro {
 										}
 									}
 								}
+
+								if (__customClass != null && @:privateAccess __customClass.hasFunction(name)) {
+									return __customClass.callFunction(name, [$a{arguments}]);
+								}
+
 								return super.$name($a{arguments});
 							};
 						} else {
@@ -269,6 +283,12 @@ class ClassExtendMacro {
 										}
 									}
 								}
+
+								if (__customClass != null && @:privateAccess __customClass.hasFunction(name)) {
+									__customClass.callFunction(name, [$a{arguments}]);
+									return;
+								}
+
 								super.$name($a{arguments});
 							};
 						}
@@ -339,12 +359,26 @@ class ClassExtendMacro {
 			Utils.setupMetas(shadowClass, imports);
 			Utils.processImport(imports, "hscript.utils.UnsafeReflect", "UnsafeReflect");
 
+			shadowClass.fields.push({
+				name: "__cachedFields",
+				pos: Context.currentPos(),
+				kind: FVar(macro: Map<String, Dynamic>),
+				access: [APublic, AStatic]
+			});
+
 			// Adding hscript getters and setters
 
 			shadowClass.fields.push({
 				name: "__interp",
 				pos: Context.currentPos(),
 				kind: FVar(macro: hscript.Interp),
+				access: [APublic]
+			});
+
+			shadowClass.fields.push({
+				name: "__customClass",
+				pos: Context.currentPos(),
+				kind: FVar(macro: hscript.customclass.CustomClass),
 				access: [APublic]
 			});
 
@@ -472,31 +506,38 @@ class ClassExtendMacro {
 
 			var hgetField = if(hasHgetInSuper) {
 				macro {
-					if(__allowSetGet && __custom__variables.exists("get_" + name))
-						return __callGetter(name);
-					if (__custom__variables.exists(name))
-						return __custom__variables.get(name);
+					if(__custom__variables != null) {
+						if(__allowSetGet && __custom__variables.exists("get_" + name))
+							return __callGetter(name);
+						if (__custom__variables.exists(name))
+							return __custom__variables.get(name);
+					}
 					return super.hget(name);
 				}
 			} else {
 				macro {
-					if(__allowSetGet && __custom__variables.exists("get_" + name))
-						return __callGetter(name);
-					if (__custom__variables.exists(name))
-						return __custom__variables.get(name);
+					if(__custom__variables != null) {
+						if(__allowSetGet && __custom__variables.exists("get_" + name))
+							return __callGetter(name);
+						if (__custom__variables.exists(name))
+							return __custom__variables.get(name);
+					}
 					return UnsafeReflect.getProperty(this, name);
 				}
 			}
 
 			var hsetField = if(hasHsetInSuper) {
 				macro {
-					if(__allowSetGet && __custom__variables.exists("set_" + name))
-						return __callSetter(name, val);
-					if (__custom__variables.exists(name)) {
-						__custom__variables.set(name, val);
-						return val;
+					if(__custom__variables != null) {
+						if(__allowSetGet && __custom__variables.exists("set_" + name))
+							return __callSetter(name, val);
+						if (__custom__variables.exists(name)) {
+							__custom__variables.set(name, val);
+							return val;
+						}
 					}
-					if(__real_fields.contains(name)) {
+					
+					if(__real_fields != null && __real_fields.contains(name)) {
 						UnsafeReflect.setProperty(this, name, val);
 						return UnsafeReflect.field(this, name);
 					}
@@ -504,17 +545,20 @@ class ClassExtendMacro {
 				}
 			} else {
 				macro {
-					if(__allowSetGet && __custom__variables.exists("set_" + name))
-						return __callSetter(name, val);
-					if (__custom__variables.exists(name)) {
-						__custom__variables.set(name, val);
-						return val;
+					if(__custom__variables != null) {
+						if(__allowSetGet && __custom__variables.exists("set_" + name))
+							return __callSetter(name, val);
+						if (__custom__variables.exists(name)) {
+							__custom__variables.set(name, val);
+							return val;
+						}
 					}
-					if(__real_fields.contains(name)) {
+					
+					if(__real_fields != null && __real_fields.contains(name)) {
 						UnsafeReflect.setProperty(this, name, val);
 						return UnsafeReflect.field(this, name);
 					}
-					__custom__variables.set(name, val);
+					if(__custom__variables != null) __custom__variables.set(name, val);
 					return val;
 				}
 			}
@@ -578,6 +622,32 @@ class ClassExtendMacro {
 		}
 
 		return fields;
+	}
+
+	static function buildConstructor(constArgs:Array<FunctionArg>):Field {
+		var superCallArgs:Array<Expr> = [for (arg in constArgs) macro $i{arg.name}];
+
+		return {
+			name: 'new',
+			access: [APublic],
+			pos: Context.currentPos(),
+			kind: FFun({
+				args: constArgs,
+				expr: macro
+				{
+					// Call the super constructor with appropriate args
+					super($a{superCallArgs});
+
+					if(__cachedFields != null) {
+						for(k => v in __cachedFields) {
+							Reflect.setProperty(this, k, v);
+							trace(k);
+						}
+						__cachedFields = null;
+					}
+				},
+			}),
+		};
 	}
 }
 #else

@@ -155,6 +155,7 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 
 class CustomTemplateClass implements IHScriptCustomClassBehaviour implements IHScriptCustomAccessBehaviour {
 	public var __interp:Interp;
+	public var __customClass:hscript.customclass.CustomClass;
 	public var __allowSetGet:Bool = true;
 	public var __custom__variables:Map<String, Dynamic>;
 	public var __real_fields:Array<String>;
