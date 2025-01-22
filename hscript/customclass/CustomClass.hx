@@ -84,6 +84,19 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			switch (f.kind) {
 				case KFunction(fn):
 					_cachedFunctionDecls.set(f.name, fn);
+					#if hscriptPos
+					var fexpr:Expr = {
+						e: ExprDef.EFunction(fn.args, fn.body, f.name, fn.ret, false, false),
+						pmin: fn.body.pmin,
+						pmax: fn.body.pmax,
+						line: fn.body.line,
+						origin: fn.body.origin
+					};
+					#else
+					var fexpr = Expr.EFunction(fn.args, fn.body, f.name, fn.ret, false, false);
+					#end
+					var f0 = this.interp.expr(fexpr);
+					this.interp.variables.set(f.name, f0);
 				case KVar(v):
 					_cachedVarDecls.set(f.name, v);
 					if (v.expr != null) {
@@ -166,38 +179,15 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 
 		if (hasField(name)) {
 			var fn = getFunction(name);
-			var previousValues:Map<String, Dynamic> = [];
-			var i = 0;
-			for (a in fn.args) {
-				var value:Dynamic = null;
+			try {
+				if (fn == null)
+					interp.error(ECustom('${name} is not a function'));
 
-				if (args != null && i < args.length) {
-					value = args[i];
-				} else if (a.value != null) {
-					value = interp.expr(a.value);
-				}
-				// NOTE: We assign these as variables rather than locals because those get wiped when we enter the function.
-				if (interp.variables.exists(a.name)) {
-					previousValues.set(a.name, interp.variables.get(a.name));
-				}
-				interp.variables.set(a.name, value);
-				i++;
-			}
-			try{
-				r = interp.execute(fn.body);
-			}
-			catch(e:hscript.Expr.Error){
-				// A script error occurred while executing the script function.
+				r = UnsafeReflect.callMethodUnsafe(null, fn, args);
+			} catch (e:hscript.Expr.Error) {
+				// A script error occurred while executing the custom class function.
 				// Purge the function from the cache so it is not called again.
 				purgeFunction(name);
-			}
-
-			for (a in fn.args) {
-				if (previousValues.exists(a.name)) {
-					interp.variables.set(a.name, previousValues.get(a.name));
-				} else {
-					interp.variables.remove(a.name);
-				}
 			}
 		} else {
 			var fixedArgs = [];
@@ -205,13 +195,14 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			var fixedName = '_HX_SUPER__${name}';
 			for (a in args) {
 				if ((a is CustomClass)) {
-					fixedArgs.push(cast(a, CustomClass).superClass);
+					var customClass:CustomClass = cast(a, CustomClass).superClass;
+					fixedArgs.push(customClass.superClass != null ? customClass.superClass : customClass);
 				} else {
 					fixedArgs.push(a);
 				}
 			}
 			var superFn = Reflect.field(superClass, fixedName);
-			if(superFn == null) {
+			if (superFn == null) {
 				this.interp.error(ECustom('Error while calling function super.${name}(): EInvalidAccess'
 					+ '\n'
 					+ 'InvalidAccess error: Super function "${name}" does not exist! Define it or call the correct superclass function.'));
@@ -220,6 +211,8 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 		}
 		return r;
 	}
+
+	// Field check
 
     private function hasField(name:String):Bool {
 		return _cachedFieldDecls != null ? _cachedFieldDecls.exists(name) : false;
@@ -241,9 +234,12 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
         return _cachedFunctionDecls != null ? _cachedFunctionDecls.exists(name) : false;
     }
 
-    private function getFunction(name:String):FunctionDecl {
-        return _cachedFunctionDecls != null ? _cachedFunctionDecls.get(name) : null;
+    private function getFunction(name:String):Function {
+		var fn = this.interp.variables.get(name);
+		return Reflect.isFunction(fn) ? fn : null;
     }
+
+	// SuperClass field check
 
     private function cacheSuperField(name:String, value:Dynamic) {
 		if(_cachedSuperFields != null) {
@@ -337,9 +333,9 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
         return r;
     }
     
-    private function resolveField(name:String):Dynamic {
-        switch (name) {
-            case "superClass":
+	private function resolveField(name:String):Dynamic {
+		switch (name) {
+			case "superClass":
 				return this.superClass;
 			case "createSuperClass":
 				return this.createSuperClass;
@@ -347,7 +343,7 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 				return this.hasFunction;
 			case "callFunction":
 				return this.callFunction;
-            default:
+			default:
 				if (hasFunction(name)) {
 					var fn:Function = Reflect.makeVarArgs(function(args:Array<Dynamic>) {
 						return this.callFunction(name, args);
@@ -359,10 +355,9 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 				if (hasVar(name)) {
 					var value:Dynamic = null;
 
-                    if(__allowSetGet && hasFunction('get_${name}')) {
-                        value = __callGetter(name);
-                    }
-					else if (this.interp.variables.exists(name)) {
+					if (__allowSetGet && hasFunction('get_${name}')) {
+						value = __callGetter(name);
+					} else if (this.interp.variables.exists(name)) {
 						value = this.interp.variables.get(name);
 					} else {
 						var v = getVar(name);
@@ -376,37 +371,36 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 					return value;
 				}
 
-                if (this.superClass != null) {
-                    if (Type.getClass(this.superClass) == null) {
-                        // Anonymous structure
-                        if (Reflect.hasField(this.superClass, name)) {
-                            return Reflect.field(this.superClass, name);
-                        } else {
-                            throw "field '" + name + "' does not exist in custom class '" + this.className + "' or super class '"
-                                + Type.getClassName(Type.getClass(this.superClass)) + "'";
-                        }
-                    }
+				if (this.superClass != null) {
+					if (Type.getClass(this.superClass) == null) {
+						// Anonymous structure
+						if (Reflect.hasField(this.superClass, name)) {
+							return Reflect.field(this.superClass, name);
+						} else {
+							throw "field '" + name + "' does not exist in custom class '" + this.className + "' or super class '"
+								+ Type.getClassName(Type.getClass(this.superClass)) + "'";
+						}
+					}
 
 					if (this.superClass is CustomClass) {
 						var superCustomClass:CustomClass = cast(this.superClass, CustomClass);
 						try {
-                            superCustomClass.__allowSetGet = this.__allowSetGet;
+							superCustomClass.__allowSetGet = this.__allowSetGet;
 							return superCustomClass.hget(name);
 						} catch (e:Dynamic) {}
 					}
 
-                    var fields = Type.getInstanceFields(Type.getClass(this.superClass));
+					var fields = Type.getInstanceFields(Type.getClass(this.superClass));
 					if (fields.contains(name)) {
 						return __allowSetGet ? Reflect.getProperty(this.superClass, name) : Reflect.field(this.superClass, name);
 					} else {
 						throw "field '" + name + "' does not exist in custom class '" + this.className + "' or super class '"
 							+ Type.getClassName(Type.getClass(this.superClass)) + "'";
 					}
-                }
-                else {
-                    throw "field '" + name + "' does not exist in custom class '" + this.className + "'";
-                }
-        }
-        return null;
-    }
+				} else {
+					throw "field '" + name + "' does not exist in custom class '" + this.className + "'";
+				}
+		}
+		return null;
+	}
 }

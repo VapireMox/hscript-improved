@@ -8,7 +8,7 @@ import hscript.Expr.FunctionDecl;
 
 @:structInit
 class CustomClassDecl implements IHScriptCustomAccessBehaviour {
-	public var classDecl:Expr.ClassDecl;
+	public var classDecl:Expr.ClassDecl; //This holds the class instantiation info
 	public var imports:Map<String, CustomClassImport>;
 	public var pkg:Null<Array<String>> = null;
 
@@ -27,6 +27,19 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 				switch (f.kind) {
 					case KFunction(fn):
 						_cachedStaticFunctions.set(f.name, fn);
+						#if hscriptPos
+						var fexpr:Expr = {
+							e: ExprDef.EFunction(fn.args, fn.body, f.name, fn.ret, false, false),
+							pmin: fn.body.pmin,
+							pmax: fn.body.pmax,
+							line: fn.body.line,
+							origin: fn.body.origin
+						};
+						#else
+						var fexpr = Expr.EFunction(fn.args, fn.body, f.name, fn.ret, false, false);
+						#end
+						var f0 = this.staticInterp.expr(fexpr);
+						this.staticInterp.variables.set(f.name, f0);
 					case KVar(v):
 						_cachedStaticVariables.set(f.name, v);
 						if (v.expr != null) {
@@ -38,14 +51,10 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 		}
 	}
 
-	public function callFunction(name:String, ?args:Array<Dynamic>) {
-		var func:FunctionDecl = getFunction(name);
+	public function callFunction(name:String, ?args:Array<Dynamic>):Dynamic {
+		var func:Function = getFunction(name);
 
-		if(func != null) {
-			return FunctionUtils.callStaticFunction(name, this, staticInterp, func, args != null ? args : []);
-		}
-
-		return null;
+		return FunctionUtils.callStaticFunction(name, this, staticInterp, func, args != null ? args : []);
 	}
 
 	public function hasField(name:String):Bool {
@@ -56,8 +65,9 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 		return _cachedStaticFunctions.exists(name);
 	}
 
-	private function getFunction(name:String):FunctionDecl {
-		return _cachedStaticFunctions.get(name);
+	private function getFunction(name:String):Function {
+		var fn = this.staticInterp.variables.get(name);
+		return Reflect.isFunction(fn) ? fn : null;
 	}
 
 	private function hasVar(name:String):Bool {
