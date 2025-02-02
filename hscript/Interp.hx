@@ -81,10 +81,11 @@ class Interp {
 		return _customClasses.exists(name);
 	}
 
-	private static function registerCustomClass(c:CustomClassDecl) {
+	private static function registerCustomClass(c:CustomClassDecl, ?as:String) {
 		#if CUSTOM_CLASSES
 		var name = c.classDecl.name;
-		if (c.pkg != null) {
+		if (as != null) name = as;
+		else if (c.pkg != null) {
 			name = c.pkg.join(".") + "." + name;
 		}
 		_customClasses.set(name, c);
@@ -129,7 +130,7 @@ class Interp {
 		return scriptObject = v;
 	}
 	public var errorHandler:Error->Void;
-	public var importFailedCallback:Array<String>->Bool;
+	public var importFailedCallback:Array<String> -> ?Null<String> -> Bool;
 
 	public var customClasses:Map<String, Dynamic>;
 	public var variables:Map<String, Dynamic>;
@@ -829,7 +830,7 @@ class Interp {
 				}
 
 				if (cl == null && en == null) {
-					if (importFailedCallback == null || !importFailedCallback(oldSplitName))
+					if (importFailedCallback == null || !importFailedCallback(oldSplitName, n))
 						error(EInvalidClass(oldClassName));
 				} else {
 					if (en != null) {
@@ -1593,24 +1594,26 @@ class Interp {
 		}
 	}
 
-	public function registerModule(module:Array<ModuleDecl>) {
+	public function registerModule(module:Array<ModuleDecl>, ?as:String) {
 		var pkg:Array<String> = null;
 		var imports:Map<String, CustomClassImport> = [];
 		for (decl in module) {
 			switch (decl) {
 				case DPackage(path):
 					pkg = path;
-				case DImport(path, _):
+				case DImport(path, _, asname):
 					if (importBlocklist.contains(path.join(".")))
 						continue;
 					var last = path[path.length - 1];
+					var hasAlias = asname != null;
 
 					var importedClass:CustomClassImport = {
 						name: last,
 						pkg: [for (e in path) e.trim()],
-						fullPath: path.join(".")
+						fullPath: path.join("."),
+						as: asname
 					}
-					imports.set(importedClass.name, importedClass);
+					imports.set(hasAlias ? asname : importedClass.name, importedClass);
 				case DClass(c):
 					var extend = c.extend;
 					if (extend != null) {
@@ -1640,7 +1643,7 @@ class Interp {
 						pkg: pkg
 					}
 					customClassDecl.cacheFields();
-					registerCustomClass(customClassDecl);
+					registerCustomClass(customClassDecl, as);
 				case DTypedef(_):
 					//TODO: maybe make this work :3
 			}

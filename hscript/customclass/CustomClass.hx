@@ -152,22 +152,23 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 		var i:Int = 0;
 		for(_import in __class.imports) {
 			var importedClass = _import.fullPath;
+			var importAlias = _import.as;
             
 			if(Interp.customClassExist(importedClass) && this.interp.importFailedCallback != null) {
-				this.interp.importFailedCallback(importedClass.split("."));
+				this.interp.importFailedCallback(importedClass.split("."), importAlias);
 				continue;
 			}
             
 			#if hscriptPos
 			var e:Expr = {
-				e: ExprDef.EImport(importedClass),
+				e: ExprDef.EImport(importedClass, importAlias),
 				pmin: 0,
 				pmax: 0,
 				origin: this.className,
 				line: i
 			};
 			#else
-			var e = Expr.EImport(importedClass);
+			var e = Expr.EImport(importedClass, importAlias);
 			#end
 			this.interp.expr(e);
 			i++;

@@ -1509,10 +1509,22 @@ class Parser {
 				return DPackage(path);
 			case "import":
 				var path = [getIdent()];
-				var star = false;
+				var asname:String = null;
+				var star = false; // For now, unused
 				while( true ) {
 					var t = token();
 					if( t != TDot ) {
+						if (t.match(TId("as"))) {
+							t = token();
+							switch (t) {
+								case TId(id):
+									asname = id;
+								default:
+									unexpected(t);
+							}
+							break;
+						}
+
 						push(t);
 						break;
 					}
@@ -1520,34 +1532,52 @@ class Parser {
 					switch( t ) {
 					case TId(id):
 						path.push(id);
+					/* idk if put this work
 					case TOp("*"):
 						star = true;
+					*/
 					default:
 						unexpected(t);
 					}
 				}
 				ensure(TSemicolon);
-				return DImport(path, star);
+				return DImport(path, star, asname);
 			case "class":
 				var name = getIdent();
 				var params = parseParams();
-				var extend = null;
-				var implement = [];
+				var extend:Null<CType> = null;
+				var implement:Array<CType> = [];
 
 				while( true ) {
 					var t = token();
 					switch( t ) {
 						case TId("extends"):
-							extend = parseType();
+							var e = parseType();
+							switch(e) {
+								case CTPath(path, params):
+									if(extend != null) {
+										error(ECustom('Cannot extend a class twice.'), 0, 0);
+									}
+									extend = e;
+								default:
+									error(ECustom('${Std.string(e)} is not a valid path.'), 0, 0);
+							}
 						case TId("implements"):
-							implement.push(parseType());
+							var i = parseType();
+							switch(i) {
+								case CTPath(path, params):
+									implement.push(i);
+								default:
+									error(ECustom('${Std.string(i)} is not a valid interface path.'), 0, 0);
+							}
+							//implement.push(parseType());
 						default:
 							push(t);
 							break;
 					}
 				}
 
-				var fields = [];
+				var fields:Array<FieldDecl> = [];
 				ensure(TBrOpen);
 				while( !maybe(TBrClose) )
 					fields.push(parseField());

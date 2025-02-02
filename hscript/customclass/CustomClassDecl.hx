@@ -157,4 +157,5 @@ typedef CustomClassImport = {
 	var ?name:String;
 	var ?pkg:Array<String>;
 	var ?fullPath:String; // pkg.pkg.pkg.name
+	var ?as:Null<String>; // import pkg.Name as OtherName
 }
