@@ -51,6 +51,7 @@ enum ExprDef {
 typedef ExprDef = Expr;
 enum Expr {
 #end
+	EIgnore(skip:Bool);
 	EConst( c : Const );
 	EIdent( v : String );
 	EVar( n : String, ?t : CType, ?e : Expr, ?isPublic : Bool, ?isStatic : Bool, ?isPrivate : Bool, ?isFinal : Bool, ?isInline : Bool );
@@ -81,6 +82,7 @@ enum Expr {
 
 	EImport( c : String, ?asname:String );
 	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String>, ?isFinal:Bool, ?isPrivate:Bool );
+	ERedirect( name:String, className:String, ?cl:Class<Dynamic> );
 }
 
 @:structInit

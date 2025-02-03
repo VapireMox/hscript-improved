@@ -113,7 +113,8 @@ class Printer {
 			add("??NULL??");
 			return;
 		}
-		switch( #if hscriptPos e.e #else e #end ) {
+		switch( Tools.expr(e) ) {
+		case EIgnore(_):
 		case EImport(c, n):
 			add("import " + c);
 			if(n != null)
@@ -133,6 +134,8 @@ class Printer {
 
 			tabs = tabs.substr(1);
 			add("}");
+		case ERedirect(n, cl):
+			add('typedef $n = $cl');
 		case EConst(c):
 			switch( c ) {
 			case CInt(i): add(i);

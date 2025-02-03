@@ -1033,7 +1033,39 @@ class Parser {
 			var tk = token();
 			push(tk);
 			mk(EClass(name, fields, extend, interfaces, nextIsFinal, nextIsPrivate), p1);
+		case "typedef":
+			var name = getIdent();
 
+			ensureToken(TOp("="));
+
+			var t = parseType();
+
+			switch(t) {
+				case CTAnon(_) | CTFun(_):
+					mk(EIgnore(true));
+				case CTPath(path, params):
+					if (params != null && params.length > 1)
+						error(ECustom("Typedefs can't have parameters"), tokenMin, tokenMax);
+
+					if (path.length == 0)
+						error(ECustom("Typedefs can't be empty"), tokenMin, tokenMax);
+
+					var className = path.join(".");
+					var cl = Tools.getClass(className);
+					if(cl != null)
+						return mk(ERedirect(name, className, cl));
+
+					var expr = mk(EIdent(path.shift()));
+					while (path.length > 0) {
+						expr = mk(EField(expr, path.shift(), false));
+					}
+
+					// todo? add import to the beginning of the file?
+					mk(EVar(name, null, expr));
+				default:
+					error(ECustom("Typedef, unknown type " + t), tokenMin, tokenMax);
+					null;
+			}
 		case "return":
 			var tk = token();
 			push(tk);

@@ -772,6 +772,7 @@ class Interp {
 		var e = e.e;
 		#end
 		switch (e) {
+			case EIgnore(_):
 			case EClass(name, fields, extend, interfaces): //Not sure if leave the old system or implement the new one.
 				if (customClasses.exists(name))
 					error(EAlreadyExistingClass(name));
@@ -854,7 +855,11 @@ class Interp {
 				}
 
 				return null;
-
+			case ERedirect(n, cln, cl):
+				if(cl != null) {
+					setVar(n, cl);
+				}
+				localImportRedirects.set(n, cln);
 			case EConst(c):
 				switch (c) {
 					case CInt(v): return v;
@@ -1644,8 +1649,8 @@ class Interp {
 					}
 					customClassDecl.cacheFields();
 					registerCustomClass(customClassDecl, as);
-				case DTypedef(_):
-					//TODO: maybe make this work :3
+				case DTypedef(td):
+					// TODO: put this work
 			}
 		}
 	}
