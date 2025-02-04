@@ -299,7 +299,8 @@ class Parser {
 		// this is a hack to support var a,b,c; with a single EVar
 		while( tk == TComma && e != null && expr(e).match(EVar(_)) ) {
 			e = parseStructure("var"); // next variable
-			exprs.push(e);
+			if(!expr(e).match(EIgnore(_)))
+				exprs.push(e);
 			tk = token();
 		}
 
