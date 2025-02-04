@@ -285,13 +285,15 @@ class Parser {
 			case EReturn(e): e != null && isBlock(e);
 			case ETry(_, _, _, e): isBlock(e);
 			case EMeta(_, _, e): isBlock(e);
+			case EIgnore(skip): skip;
 			default: false;
 		}
 	}
 
 	function parseFullExpr( exprs : Array<Expr> ):Void {
 		var e = parseExpr();
-		exprs.push(e);
+		if(!expr(e).match(EIgnore(_)))
+			exprs.push(e);
 
 		var tk = token();
 		// this is a hack to support var a,b,c; with a single EVar
