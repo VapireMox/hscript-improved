@@ -54,6 +54,7 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 		}
 
         buildImports();
+		buildUsings();
 
         if(extendFieldDecl != null)
 			_cachedSuperFields = extendFieldDecl;
@@ -174,6 +175,12 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			i++;
 		}
     }
+
+	function buildUsings() {
+		for(us in __class.usings) {
+			@:privateAccess this.interp.useUsing(us);
+		}
+	}
 
 	public function callFunction(name:String, args:Array<Dynamic> = null):Dynamic {
 		var r:Dynamic = null;

@@ -131,6 +131,10 @@ class Bytes {
 			// TODO
 		case ERedirect(_, _):
 			// TODO
+		case EUsing(name):
+			// TODO
+		case EEnum(name, fields):
+			// TODO
 		case EConst(c):
 			doEncodeConst(c);
 		case EIdent(v):

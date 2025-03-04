@@ -83,6 +83,8 @@ enum Expr {
 	EImport( c : String, ?asname:String );
 	EClass( name:String, fields:Array<Expr>, ?extend:String, interfaces:Array<String>, ?isFinal:Bool, ?isPrivate:Bool );
 	ERedirect( name:String, className:String, ?cl:Class<Dynamic> );
+	EUsing(name:String);
+	EEnum(name:String, fields:Array<EnumType>);
 }
 
 @:structInit
@@ -162,6 +164,7 @@ enum Error {
 enum ModuleDecl {
 	DPackage( path : Array<String> );
 	DImport( path : Array<String>, ?everything : Bool, ?asname:String );
+	DUsing( path : Array<String>);
 	DClass( c : ClassDecl );
 	DTypedef( c : TypeDecl );
 }
@@ -217,4 +220,9 @@ typedef VarDecl = {
 	var set : Null<String>;
 	var expr : Null<Expr>;
 	var type : Null<CType>;
+}
+
+enum EnumType {
+	ESimple(name: String);
+	EConstructor(name: String, args: Array<Argument>);
 }

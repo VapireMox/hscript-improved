@@ -6,10 +6,12 @@ import hscript.Expr.FieldDecl;
 import hscript.Expr.VarDecl;
 import hscript.Expr.FunctionDecl;
 
+@:access(hscript.Interp)
 @:structInit
 class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 	public var classDecl:Expr.ClassDecl; //This holds the class instantiation info
 	public var imports:Map<String, CustomClassImport>;
+	public var usings:Array<String>;
 	public var pkg:Null<Array<String>> = null;
 
 	public var staticInterp:Interp = new Interp();
@@ -20,7 +22,17 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 
 	public var __allowSetGet:Bool = true;
 
-	public function cacheFields() {
+	public function new(classDecl:Expr.ClassDecl, imports:Map<String, CustomClassImport>, usings:Array<String>, pkg:Null<Array<String>>) {
+		this.classDecl = classDecl;
+		this.imports = imports;
+		this.usings = usings;
+		this.pkg = pkg;
+
+		cacheFields();
+		processUsings();
+	}
+
+	function cacheFields() {
 		for (f in classDecl.fields) {
 			if (f.access.contains(AStatic)) {
 				_cachedStaticFields.set(f.name, f);
@@ -48,6 +60,12 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 						}
 				}
 			}
+		}
+	}
+
+	function processUsings() {
+		for(us in usings) {
+			this.staticInterp.useUsing(us);
 		}
 	}
 

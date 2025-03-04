@@ -234,6 +234,16 @@ class Parser {
 		}
 	}
 
+	function extractIdent(tk: Token): String {
+		switch (tk) {
+			case TId(id):
+				return id;
+			default:
+				unexpected(tk);
+				return null;
+		}
+	}
+
 	inline function expr(e:Expr):#if hscriptPos ExprDef #else Expr #end {
 		#if hscriptPos
 		return e.e;
@@ -272,7 +282,7 @@ class Parser {
 	function isBlock(e:Expr):Bool {
 		if( e == null ) return false;
 		return switch( expr(e) ) {
-			case EBlock(_), EObject(_), ESwitch(_): true;
+			case EBlock(_), EObject(_), ESwitch(_), EEnum(_, _): true;
 			case EFunction(_,e,_,_,_,_): isBlock(e);
 			case EClass(_,e,_,_): true;
 			case EVar(_, t, e, _,_): e != null ? isBlock(e) : t != null ? t.match(CTAnon(_)) : false;
@@ -1069,6 +1079,50 @@ class Parser {
 					error(ECustom("Typedef, unknown type " + t), tokenMin, tokenMax);
 					null;
 			}
+		case "using":
+			var path = parsePath();
+			mk(EUsing(path.join(".")));
+		case "enum":
+			var name = getIdent();
+
+			ensure(TBrOpen);
+
+			var fields = [];
+
+			var currentName = "";
+			var currentArgs: Array<Argument> = null;
+			while (true) {
+				var tk = token();
+				switch (tk) {
+					case TBrClose:
+						break;
+					case TSemicolon | TComma:
+						if (currentName == "")
+							continue;
+
+						if (currentArgs != null && currentArgs.length > 0) {
+							fields.push(EnumType.EConstructor(currentName, currentArgs));
+							currentArgs = null;
+						} else {
+							fields.push(EnumType.ESimple(currentName));
+						}
+						currentName = "";
+					case TPOpen:
+						if (currentArgs != null) {
+							error(ECustom("Cannot have multiple argument lists in one enum constructor"), tokenMin, tokenMax);
+							break;
+						}
+						currentArgs = parseFunctionArgs();
+					default:
+						if (currentName != "") {
+							error(ECustom("Expected comma or semicolon"), tokenMin, tokenMax);
+							break;
+						}
+						var name = extractIdent(tk);
+						currentName = name;
+				}
+			}
+			mk(EEnum(name, fields));
 		case "return":
 			var tk = token();
 			push(tk);
@@ -1577,6 +1631,10 @@ class Parser {
 				}
 				ensure(TSemicolon);
 				return DImport(path, star, asname);
+			case "using":
+				var path = parsePath();
+				ensure(TSemicolon);
+				return DUsing(path);
 			case "class":
 				var name = getIdent();
 				var params = parseParams();

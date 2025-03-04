@@ -28,13 +28,16 @@
  */
 package hscript;
 
+import hscript.utils.UsingHandler;
 import hscript.customclass.CustomClassDecl;
 import hscript.customclass.CustomClass;
+import hscript.utils.UsingEntry;
 import haxe.CallStack;
 import hscript.utils.UnsafeReflect;
 import haxe.PosInfos;
 import hscript.Expr;
 import haxe.Constraints.IMap;
+import Type.ValueType;
 
 using StringTools;
 
@@ -1212,6 +1215,53 @@ class Interp {
 				return val;
 			case ECheckType(e, _):
 				return expr(e);
+			case EUsing(name):
+				useUsing(name);
+			case EEnum(enumName, fields):
+				var obj = {};
+				for (index => field in fields) {
+					switch (field) {
+						case ESimple(name):
+							Reflect.setField(obj, name, new Tools.EnumValue(enumName, name, index, null));
+						case EConstructor(name, params):
+							var hasOpt = false, minParams = 0;
+							for (p in params)
+								if (p.opt)
+									hasOpt = true;
+								else
+									minParams++;
+							var f = function(args: Array<Dynamic>) {
+								if (((args == null) ? 0 : args.length) != params.length) {
+									if (args.length < minParams) {
+										var str = "Invalid number of parameters. Got " + args.length + ", required " + minParams;
+										if (enumName != null)
+											str += " for enum '" + enumName + "'";
+										error(ECustom(str));
+									}
+									// make sure mandatory args are forced
+									var args2 = [];
+									var extraParams = args.length - minParams;
+									var pos = 0;
+									for (p in params)
+										if (p.opt) {
+											if (extraParams > 0) {
+												args2.push(args[pos++]);
+												extraParams--;
+											} else
+												args2.push(null);
+										} else
+											args2.push(args[pos++]);
+									args = args2;
+								}
+								return new Tools.EnumValue(enumName, name, index, args);
+							};
+							var f = Reflect.makeVarArgs(f);
+
+							Reflect.setField(obj, name, f);
+					}
+				}
+
+				variables.set(enumName, obj);
 		}
 		return null;
 	}
@@ -1453,7 +1503,116 @@ class Interp {
 		return v;
 	}
 
+	/**
+	 * Meant for people to add their own usings.
+	**/
+	function registerUsingLocal(name: String, call: UsingCall): UsingEntry {
+		var entry = new UsingEntry(name, call);
+		usings.push(entry);
+		return entry;
+	}
+
+	function useUsing(name:String) {
+		for (us in UsingHandler.usingEntries) {
+			if (us.name == name) {
+				if (usings.indexOf(us) == -1)
+					usings.push(us);
+				return;
+			}
+		}
+
+		var cls = Tools.getClass(name);
+		if (cls != null) {
+			var entry:UsingEntry = null;
+
+			var fieldName = '_HX_USING__' + StringTools.replace(name, ".", "_");
+			if (Reflect.hasField(cls, fieldName)) {
+				var fields = Reflect.field(cls, fieldName);
+				if (fields == null)
+					return;
+
+				entry = new UsingEntry(name, function(o:Dynamic, f:String, args:Array<Dynamic>):Dynamic {
+					if (!fields.exists(f))
+						return null;
+					var type:ValueType = Type.typeof(o);
+					var valueType:ValueType = fields.get(f);
+
+					// If we figure out a better way to get the types as the real ValueType, we can use this instead
+					// if (Type.enumEq(valueType, type))
+					//	return Reflect.callMethod(cls, Reflect.field(cls, f), [o].concat(args));
+
+					var canCall = valueType == null ? true : switch (valueType) {
+						case TEnum(null):
+							type.match(TEnum(_));
+						case TClass(null):
+							type.match(TClass(_));
+						case TClass(IMap): // if we don't check maps like this, it just doesn't work
+							type.match(TClass(IMap) | TClass(haxe.ds.ObjectMap) | TClass(haxe.ds.StringMap) | TClass(haxe.ds.IntMap) | TClass(haxe.ds.EnumValueMap));
+						default:
+							Type.enumEq(type, valueType);
+					}
+
+					return canCall ? Reflect.callMethod(cls, Reflect.field(cls, f), [o].concat(args)) : null;
+				});
+
+				#if debug
+				trace("Registered macro based using entry for " + name);
+				#end
+
+				UsingHandler.usingEntries.push(entry);
+				usings.push(entry);
+				return;
+			}
+			else {
+				// Use reflection to generate the using entry
+				entry = new UsingEntry(name, function(o:Dynamic, f:String, args:Array<Dynamic>):Dynamic {
+					if (!Reflect.hasField(cls, f))
+						return null;
+					var field = Reflect.field(cls, f);
+					if (!Reflect.isFunction(field))
+						return null;
+
+					// invalid if the function has no arguments
+					var totalArgs = Tools.argCount(field);
+					if (totalArgs == 0)
+						return null;
+
+					return Reflect.callMethod(cls, field, [o].concat(args));
+				});
+
+				#if debug
+				trace("Registered reflection based using entry for " + name);
+				#end
+			}
+			
+			UsingHandler.usingEntries.push(entry);
+			usings.push(entry);
+			return;
+		}
+		error(ECustom("Unknown using class " + name));
+	}
+
+	/**
+	 * List of components that allow using static methods on objects.
+	 * This only works if you do
+	 * ```haxe
+	 * var result = "Hello ".trim();
+	 * ```
+	 * and not
+	 * ```haxe
+	 * var trim = "Hello ".trim;
+	 * var result = trim();
+	 * ```
+	 */
+	var usings: Array<UsingEntry> = [];
+
 	function fcall(o:Dynamic, f:String, args:Array<Dynamic>):Dynamic {
+		for(_us in usings) {
+			var v = _us.call(o, f, args);
+			if(v != null)
+				return v;
+		}
+
 		// Custom logic to handle super calls to prevent infinite recursion
 		if(_inCustomClass) {
 			// Force call super function.
@@ -1548,7 +1707,7 @@ class Interp {
 
 			return result;
 		} catch (e) {
-			error(ECustom('Script threw an exception: \n${fun}'));
+			error(ECustom('Custom Class threw an exception: \n${fun}'));
 
 			// Restore the local scope.
 			this.locals = capturedLocals;
@@ -1602,6 +1761,8 @@ class Interp {
 	public function registerModule(module:Array<ModuleDecl>, ?as:String) {
 		var pkg:Array<String> = null;
 		var imports:Map<String, CustomClassImport> = [];
+		var usings:Array<String> = [];
+		var regAlias:Bool = false;
 		for (decl in module) {
 			switch (decl) {
 				case DPackage(path):
@@ -1619,6 +1780,8 @@ class Interp {
 						as: asname
 					}
 					imports.set(hasAlias ? asname : importedClass.name, importedClass);
+				case DUsing(path): 
+					usings.push(path.join("."));
 				case DClass(c):
 					var extend = c.extend;
 					if (extend != null) {
@@ -1645,10 +1808,12 @@ class Interp {
 					var customClassDecl:CustomClassDecl = {
 						classDecl: classDecl,
 						imports: imports,
+						usings: usings,
 						pkg: pkg
 					}
-					customClassDecl.cacheFields();
-					registerCustomClass(customClassDecl, as);
+					//customClassDecl.cacheFields();
+					registerCustomClass(customClassDecl, !regAlias ? as : null);
+					if(as != null) regAlias = true;
 				case DTypedef(td):
 					// TODO: put this work
 			}

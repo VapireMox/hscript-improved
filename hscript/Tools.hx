@@ -123,6 +123,7 @@ class Tools {
 		return name.substr(ll + 1);
 	}
 
+	// TODO: maybe use this function for import since also check for innerclasses
 	public static function getClass(name: String): Dynamic {
 		var c: Dynamic = Type.resolveClass(name);
 		if (c == null) // try importing as enum
@@ -144,4 +145,70 @@ class Tools {
 		return c;
 	}
 
+	public static function isIterable(v: Dynamic): Bool {
+		// TODO: test for php and lua, they might have issues with this check
+		return v != null && v.iterator != null;
+	}
+
+	/**
+	 * DO NOT USE INLINE ON THIS FUNCTION
+	**/
+	public static function argCount(func: haxe.Constraints.Function): Int {
+		#if cpp
+		return untyped __cpp__("{0}->__ArgCount()", func);
+		#elseif js
+		return untyped js.Syntax.code("{0}.length", func);
+		#else
+		return -1;
+		#end
+	}
+
+}
+
+/**
+ * @see https://github.com/pisayesiwsi/hscript-iris/blob/dev/crowplexus/hscript/Tools.hx#L217
+ */
+class EnumValue {
+	public var enumName: String;
+	public var name: String;
+	public var index: Int;
+	public var args: Array<Dynamic>;
+
+	public function new(enumName: String, name: String, index: Int, ?args: Array<Dynamic>) {
+		this.enumName = enumName;
+		this.name = name;
+		this.index = index;
+		this.args = args;
+	}
+
+	public function toString(): String {
+		if (args == null)
+			return enumName + "." + name;
+		return enumName + "." + name + "(" + [for (arg in args) arg].join(", ") + ")";
+	}
+
+	public inline function getEnumName(): String
+		return this.enumName;
+
+	public inline function getConstructorArgs(): Array<Dynamic>
+		return this.args != null ? this.args : [];
+
+	public function compare(other: EnumValue): Bool {
+		if (enumName != other.enumName || name != other.name)
+			return false;
+		if (args == null && other.args == null)
+			return true;
+		if (args == null || other.args == null)
+			return false;
+		if (args.length != other.args.length)
+			return false;
+
+		for (i in 0...args.length) {
+			// TODO: allow deep comparison, like arrays
+			if (args[i] != other.args[i])
+				return false;
+		}
+
+		return true;
+	}
 }

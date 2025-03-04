@@ -347,7 +347,41 @@ class Printer {
 			add(" : ");
 			addType(t);
 			add(")");
+		case EUsing(name):
+			add("using ");
+			add(name);
+		case EEnum(name, params):
+			if (params.length == 0) {
+				add("enum " + name + " {}");
+				return;
+			}
+			add("enum " + name + " {\n");
+			tabs += "\t";
+			for (p in params) {
+				add(tabs);
+				switch p {
+					case EConstructor(name, args):
+						add(name);
+						add("(");
+						for (a in args)
+							addArgument(a);
+						add(")");
+					case ESimple(name):
+						add(name);
+				}
+				add(";\n");
+			}
+			tabs = tabs.substr(1);
+			add(tabs);
+			add("}");
 		}
+	}
+
+	function addArgument(a: Argument) {
+		if (a.opt)
+			add("?");
+		add(a.name);
+		addType(a.t);
 	}
 
 	public static function toString( e : Expr ):String {

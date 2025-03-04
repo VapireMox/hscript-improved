@@ -10,12 +10,12 @@ import haxe.macro.Compiler;
 
 using StringTools;
 
-class UsingHandler {
+class AbstractHandler {
 	public static function init() {
 		#if !display
 		if(Context.defined("display")) return;
 		for(apply in Config.ALLOWED_ABSTRACT_AND_ENUM) {
-			Compiler.addGlobalMetadata(apply, '@:build(hscript.macros.UsingHandler.build())');
+			Compiler.addGlobalMetadata(apply, '@:build(hscript.macros.AbstractHandler.build())');
 		}
 		#end
 	}
