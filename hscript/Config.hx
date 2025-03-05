@@ -26,4 +26,8 @@ class Config {
 	public static final DISALLOW_ABSTRACT_AND_ENUM = [
 
 	];
+
+	public static final DISALLOW_USING = [
+
+	];
 }

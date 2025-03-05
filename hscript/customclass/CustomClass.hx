@@ -16,24 +16,24 @@ using StringTools;
  * @see https://github.com/larsiusprime/polymod/tree/master/polymod/hscript/_internal
  */
 @:access(hscript.customclass.CustomClassDecl)
-class CustomClass implements IHScriptCustomAccessBehaviour{
-    public var interp:Interp;
+class CustomClass implements IHScriptCustomAccessBehaviour {
+	public var interp:Interp;
 
-    public var superClass:Dynamic;
-    public var superConstructor(default, null):Dynamic;
+	public var superClass:Dynamic;
+	public var superConstructor(default, null):Dynamic;
 
-    public var className(get, never):String;
+	public var className(get, never):String;
 
-    private var __class:CustomClassDecl;
-    private var _cachedSuperFields:Null<Map<String, Dynamic>> = null;
+	private var __class:CustomClassDecl;
+	private var _cachedSuperFields:Null<Map<String, Dynamic>> = null;
 
-    private var _cachedFieldDecls:Map<String, FieldDecl> = null;
+	private var _cachedFieldDecls:Map<String, FieldDecl> = null;
 	private var _cachedFunctionDecls:Map<String, FunctionDecl> = null;
 	private var _cachedVarDecls:Map<String, VarDecl> = null;
 
 	public var __allowSetGet:Bool = true;
 
-    private function get_className():String {
+	private function get_className():String {
 		var name = "";
 		if (__class.pkg != null) {
 			name += __class.pkg.join(".");
@@ -42,45 +42,46 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 		return name;
 	}
 
-    public function new(__class:CustomClassDecl, args:Array<Dynamic>, ?extendFieldDecl:Map<String, Dynamic>, ?ogInterp:Interp) {
-        this.__class = __class;
-        this.interp = new Interp(this);
+	public function new(__class:CustomClassDecl, args:Array<Dynamic>, ?extendFieldDecl:Map<String, Dynamic>, ?ogInterp:Interp) {
+		this.__class = __class;
+		this.interp = new Interp(this);
 
-        if(ogInterp != null && ogInterp.importFailedCallback != null && ogInterp.errorHandler != null) {
+		if (ogInterp != null && ogInterp.importFailedCallback != null && ogInterp.errorHandler != null) {
 			interp.importFailedCallback = ogInterp.importFailedCallback;
 			interp.errorHandler = ogInterp.errorHandler;
-            interp.allowStaticVariables = ogInterp.allowStaticVariables;
-            interp.staticVariables = ogInterp.staticVariables;
+			interp.allowStaticVariables = ogInterp.allowStaticVariables;
+			interp.staticVariables = ogInterp.staticVariables;
 		}
 
-        buildImports();
+		buildImports();
 		buildUsings();
 
-        if(extendFieldDecl != null)
+		if (extendFieldDecl != null)
 			_cachedSuperFields = extendFieldDecl;
 
-        buildClass();
+		buildClass();
 
-        if(hasFunction('new')) {
-            buildSuperConstructor();
-            callFunction('new', args);
-            if(this.superClass == null && this.__class.classDecl.extend != null)
-                this.interp.error(ECustom("super() not called"));
-        }
-        else if(__class.classDecl.extend != null) {
-            createSuperClass(args);
-        }
-    }
+		if (hasFunction('new')) {
+			buildSuperConstructor();
+			callFunction('new', args);
+			if (this.superClass == null && this.__class.classDecl.extend != null)
+				this.interp.error(ECustom("super() not called"));
+		} else if (__class.classDecl.extend != null) {
+			createSuperClass(args);
+		}
+	}
 
-    function buildClass() {
-        _cachedFieldDecls = [];
+	function buildClass() {
+		_cachedFieldDecls = [];
 		_cachedFunctionDecls = [];
 		_cachedVarDecls = [];
 
-        if(_cachedSuperFields == null) _cachedSuperFields = [];
+		if (_cachedSuperFields == null)
+			_cachedSuperFields = [];
 
-        for (f in __class.classDecl.fields) {
-			if(f.access.contains(AStatic)) continue; // Skip static field. It's handled by CustomClassDecl.hx
+		for (f in __class.classDecl.fields) {
+			if (f.access.contains(AStatic))
+				continue; // Skip static field. It's handled by CustomClassDecl.hx
 			_cachedFieldDecls.set(f.name, f);
 			switch (f.kind) {
 				case KFunction(fn):
@@ -107,21 +108,21 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			}
 		}
 
-		if(!_cachedSuperFields.empty()) {
+		if (!_cachedSuperFields.empty()) {
 			for (f => v in _cachedSuperFields) {
 				this.hset(f, v);
 			}
 			_cachedSuperFields.clear();
 		}
-    }
+	}
 
-    function buildSuperConstructor() {
-        superConstructor = Reflect.makeVarArgs(function(args:Array<Dynamic>) {
+	function buildSuperConstructor() {
+		superConstructor = Reflect.makeVarArgs(function(args:Array<Dynamic>) {
 			createSuperClass(args);
 		});
-    }
+	}
 
-    private function createSuperClass(args:Array<Dynamic> = null) {
+	private function createSuperClass(args:Array<Dynamic> = null) {
 		if (args == null)
 			args = [];
 
@@ -138,28 +139,28 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			if (c == null) {
 				interp.error(ECustom("could not resolve super class: " + extendString));
 			}
-			if(_cachedSuperFields != null) {
+			if (_cachedSuperFields != null) {
 				Reflect.setField(c, "__cachedFields", _cachedSuperFields); // Static field
 			}
-			
+
 			superClass = Type.createInstance(c, args);
 			superClass.__customClass = this;
 			superClass.__real_fields = Type.getInstanceFields(c);
 		}
 	}
 
-    function buildImports() {
-        // TODO: implement Alias imports
+	function buildImports() {
+		// TODO: implement Alias imports
 		var i:Int = 0;
-		for(_import in __class.imports) {
+		for (_import in __class.imports) {
 			var importedClass = _import.fullPath;
 			var importAlias = _import.as;
-            
-			if(Interp.customClassExist(importedClass) && this.interp.importFailedCallback != null) {
+
+			if (Interp.customClassExist(importedClass) && this.interp.importFailedCallback != null) {
 				this.interp.importFailedCallback(importedClass.split("."), importAlias);
 				continue;
 			}
-            
+
 			#if hscriptPos
 			var e:Expr = {
 				e: ExprDef.EImport(importedClass, importAlias),
@@ -174,10 +175,10 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 			this.interp.expr(e);
 			i++;
 		}
-    }
+	}
 
-	function buildUsings() {
-		for(us in __class.usings) {
+	inline function buildUsings() {
+		for (us in __class.usings) {
 			@:privateAccess this.interp.useUsing(us);
 		}
 	}
@@ -222,46 +223,47 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 
 	// Field check
 
-    private function hasField(name:String):Bool {
+	private function hasField(name:String):Bool {
 		return _cachedFieldDecls != null ? _cachedFieldDecls.exists(name) : false;
 	}
 
-    private function getField(name:String):FieldDecl {
+	private function getField(name:String):FieldDecl {
 		return _cachedFieldDecls != null ? _cachedFieldDecls.get(name) : null;
 	}
 
-    private function hasVar(name:String):Bool {
+	private function hasVar(name:String):Bool {
 		return _cachedVarDecls != null ? _cachedVarDecls.exists(name) : false;
 	}
 
-    private function getVar(name:String):VarDecl {
-		return _cachedVarDecls != null ? _cachedVarDecls.get(name): null;
+	private function getVar(name:String):VarDecl {
+		return _cachedVarDecls != null ? _cachedVarDecls.get(name) : null;
 	}
 
-    private function hasFunction(name:String):Bool {
-        return _cachedFunctionDecls != null ? _cachedFunctionDecls.exists(name) : false;
-    }
+	private function hasFunction(name:String):Bool {
+		return _cachedFunctionDecls != null ? _cachedFunctionDecls.exists(name) : false;
+	}
 
-    private function getFunction(name:String):Function {
+	private function getFunction(name:String):Function {
 		var fn = this.interp.variables.get(name);
 		return Reflect.isFunction(fn) ? fn : null;
-    }
+	}
 
 	// SuperClass field check
 
-    private function cacheSuperField(name:String, value:Dynamic) {
-		if(_cachedSuperFields != null) {
+	private function cacheSuperField(name:String, value:Dynamic) {
+		if (_cachedSuperFields != null) {
 			_cachedSuperFields.set(name, value);
 		}
 	}
 
-    var __superClassFieldList:Array<String> = null;
+	var __superClassFieldList:Array<String> = null;
 
 	public function superHasField(name:String):Bool {
-		if(superClass == null) return false;
+		if (superClass == null)
+			return false;
 
 		// Reflect.hasField(this, name) is REALLY expensive so we use a cache.
-		if(__superClassFieldList == null) {
+		if (__superClassFieldList == null) {
 			__superClassFieldList = Reflect.fields(superClass).concat(Type.getInstanceFields(Type.getClass(superClass)));
 		}
 
@@ -279,68 +281,63 @@ class CustomClass implements IHScriptCustomAccessBehaviour{
 		}
 	}
 
-    // Access fields
+	// Access fields
 
-    public function hget(name:String):Dynamic {
-        return resolveField(name);
-    }
+	public function hget(name:String):Dynamic {
+		return resolveField(name);
+	}
 
-    public function hset(name:String, val:Dynamic):Dynamic {
-        switch (name) {
-            default:
-                if (hasVar(name)) {
-                    if(__allowSetGet && hasFunction('set_${name}')) 
-                        return __callSetter(name, val);
+	public function hset(name:String, val:Dynamic):Dynamic {
+		switch (name) {
+			default:
+				if (hasVar(name)) {
+					if (__allowSetGet && hasFunction('set_${name}'))
+						return __callSetter(name, val);
 
-                    this.interp.variables.set(name, val);
-                }
-                else if (this.superClass != null) {
-                    if(Type.getClass(this.superClass) == null) {
-                        // Anonymous structure
-                        if(Reflect.hasField(this.superClass, name)) {
-                            Reflect.setField(this.superClass, name, val);
-                        }
-                        return val;
-                    }
-					else if (this.superClass is CustomClass) {
+					this.interp.variables.set(name, val);
+				} else if (this.superClass != null) {
+					if (Type.getClass(this.superClass) == null) {
+						// Anonymous structure
+						if (Reflect.hasField(this.superClass, name)) {
+							Reflect.setField(this.superClass, name, val);
+						}
+						return val;
+					} else if (this.superClass is CustomClass) {
 						var superCustomClass:CustomClass = cast(this.superClass, CustomClass);
 						try {
-                            superCustomClass.__allowSetGet = this.__allowSetGet;
+							superCustomClass.__allowSetGet = this.__allowSetGet;
 							return superCustomClass.hset(name, val);
 						} catch (e:Dynamic) {}
-					}
-                    else if(superHasField(name)){
-                        if(__allowSetGet)
-                            Reflect.setProperty(this.superClass, name, val);
-                        else
-                            Reflect.setField(this.superClass, name, val);
-                    }
-                    else {
+					} else if (superHasField(name)) {
+						if (__allowSetGet)
+							Reflect.setProperty(this.superClass, name, val);
+						else
+							Reflect.setField(this.superClass, name, val);
+					} else {
 						throw "field '" + name + "' does not exist in custom class '" + this.className + "' or super class '"
 							+ Type.getClassName(Type.getClass(this.superClass)) + "'";
-                    }
-                }
-				else {
+					}
+				} else {
 					throw "field '" + name + "' does not exist in custom class '" + this.className + "'";
 				}
-        }
-        return val;
-    }
+		}
+		return val;
+	}
 
-    public function __callGetter(name:String):Dynamic {
-        __allowSetGet = false;
-        var r = callFunction('get_${name}');
-        __allowSetGet = true;
-        return r;
-    }
+	public function __callGetter(name:String):Dynamic {
+		__allowSetGet = false;
+		var r = callFunction('get_${name}');
+		__allowSetGet = true;
+		return r;
+	}
 
 	public function __callSetter(name:String, val:Dynamic):Dynamic {
-        __allowSetGet = false;
-        var r = callFunction('set_${name}', [val]);
-        __allowSetGet = true;
-        return r;
-    }
-    
+		__allowSetGet = false;
+		var r = callFunction('set_${name}', [val]);
+		__allowSetGet = true;
+		return r;
+	}
+
 	private function resolveField(name:String):Dynamic {
 		switch (name) {
 			case "superClass":

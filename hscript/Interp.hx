@@ -28,6 +28,7 @@
  */
 package hscript;
 
+import haxe.Constraints.Function;
 import hscript.utils.UsingHandler;
 import hscript.customclass.CustomClassDecl;
 import hscript.customclass.CustomClass;
@@ -84,11 +85,11 @@ class Interp {
 		return _customClasses.exists(name);
 	}
 
-	private static function registerCustomClass(c:CustomClassDecl, ?as:String) {
+	private static function registerCustomClass(c:CustomClassDecl, ?as:String, ?inCustomClass:Bool) {
 		#if CUSTOM_CLASSES
 		var name = c.classDecl.name;
 		if (as != null) name = as;
-		else if (c.pkg != null) {
+		else if (c.pkg != null && (inCustomClass != null && inCustomClass)) {
 			name = c.pkg.join(".") + "." + name;
 		}
 		_customClasses.set(name, c);
@@ -920,32 +921,69 @@ class Interp {
 						error(EInvalidOp(op));
 				}
 			case ECall(e, params):
-				var args:Array<Dynamic> = []; // [for (p in params) expr(p)];
-				for (p in params) {
-					switch (Tools.expr(p)) {
-						case EIdent(id):
-							var ident = resolve(id);
-							if (ident is CustomClass) {
-								var customClass:CustomClass = cast ident; // Pass the underlying superclass if exist
-								args.push(customClass.superClass != null ? customClass.superClass : customClass);
-							} else {
-								args.push(ident);
-							}
-						default:
-							args.push(expr(p));
-					}
-				}
-
 				switch (Tools.expr(e)) {
 					case EField(e, f, s):
-						var obj = expr(e);
+						var obj:Dynamic = expr(e);
 						if (obj == null) {
 							if(s) return null;
 							error(EInvalidAccess(f));
 						}
-						return fcall(obj, f, args);
+
+						if (f == "bind" && Reflect.isFunction(obj)) {
+							var obj: Function = obj;
+							if (params.length == 0) { // Special case for function.bind()
+								return Reflect.makeVarArgs(function(ar: Array<Dynamic>) {
+									return obj();
+								});
+							}
+
+							// bind(_, false) => function(a1) return obj(a1, false);
+							// bind(false, _) => function(a2) return obj(false, a2);
+							// bind(_, _) => function(a1, a2) return obj(a1, a2);
+
+							var totalNeeded = 0;
+							var bArgs = [];
+							for (p in params) {
+								switch (Tools.expr(p)) {
+									case EIdent(_):
+										bArgs.push(null);
+										totalNeeded++;
+									default:
+										bArgs.push(p);
+								}
+							}
+							var me = this;
+							// TODO: make it increment the depth?
+							return Reflect.makeVarArgs(function(ar: Array<Dynamic>) {
+								if (ar.length < totalNeeded)
+									error(ECustom("Too few arguments")); // TODO: make it say like "Not enough arguments, expected a:Int"
+								var i = 0;
+								var actualArgs = [];//[for (a in bArgs) if (a != null) me.expr(a) else ar[i++]];
+								for(a in bArgs) {
+									if(a != null) {
+										switch(Tools.expr(a)) {
+											case EIdent(id0):
+												var ident = resolve(id0);
+												if (ident is CustomClass) {
+													var customClass:CustomClass = cast ident; // Pass the underlying superclass if exist
+													actualArgs.push(customClass.superClass != null ? customClass.superClass : customClass);
+												} else {
+													actualArgs.push(ident);
+												}
+											default:
+												actualArgs.push(me.expr(a));
+										}
+									}
+									else 
+										actualArgs.push(ar[i++]);
+								}
+								return Reflect.callMethod(null, obj, actualArgs);
+							});
+						}
+						
+						return fcall(obj, f, makeArgs(params));
 					default:
-						return call(null, expr(e), args);
+						return call(null, expr(e), makeArgs(params));
 				}
 			case EIf(econd, e1, e2):
 				return if (expr(econd) == true) expr(e1) else if (e2 == null) null else expr(e2);
@@ -1322,6 +1360,26 @@ class Interp {
 		if (v.hasNext == null || v.next == null)
 			error(EInvalidIterator(v));
 		return v;
+	}
+
+	function makeArgs(params:Array<Expr>):Array<Dynamic> {
+		var args:Array<Dynamic> = []; // [for (p in params) expr(p)];
+		for (p in params) {
+			switch (Tools.expr(p)) {
+				case EIdent(id):
+					var ident = resolve(id);
+					if (ident is CustomClass) {
+						var customClass:CustomClass = cast ident; // Pass the underlying superclass if exist
+						args.push(customClass.superClass != null ? customClass.superClass : customClass);
+					} else {
+						args.push(ident);
+					}
+				default:
+					args.push(expr(p));
+			}
+		}
+
+		return args;
 	}
 
 	function forLoop(n:String, it:Expr, e:Expr, ?ithv:String):Void {
@@ -1812,7 +1870,7 @@ class Interp {
 						pkg: pkg
 					}
 					//customClassDecl.cacheFields();
-					registerCustomClass(customClassDecl, !regAlias ? as : null);
+					registerCustomClass(customClassDecl, !regAlias ? as : null, _inCustomClass);
 					if(as != null) regAlias = true;
 				case DTypedef(td):
 					// TODO: put this work

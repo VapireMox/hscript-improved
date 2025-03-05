@@ -13,7 +13,8 @@ using haxe.macro.Tools;
 /**
  * Macro used for the `using Class;` keyword
  * 
- * you can make classes be able to be used specifing the class/classes on Config.hx!
+ * you can make classes be able to be used specifing the classes/packages on Config.hx!
+ * or implementing the interface `hscript.utils.UsingClass`
  * ```haxe
  * public static final ALLOWED_USING = ["my.pack.VeryNiceTools"];
  * ```
@@ -21,11 +22,12 @@ using haxe.macro.Tools;
  * Usage:
  * 
  * ```haxe
+ * package my.pack;
  * // @:usableEntry() // optional
  * // @:usableEntry(forceAny) // optional // forces the class to be called with any type
  * // @:usableEntry(onlyBasic) // optional // only basic types will be allowed
  * // @:usableEntry(onlyBasic, forceAny) // optional // only basic types will be allowed, and the class will be called with any type
- * class VeryNiceTools {}
+ * class VeryNiceTools implements hscript.utils.UsingClass {}
  * ```
  * 
  * @author NeeEoo
@@ -49,10 +51,12 @@ class UsingMacro {
 		var cls: haxe.macro.Type.ClassType = Context.getLocalClass().get();
 		var fields = Context.getBuildFields();
 
+		var key = cls.module;
+		var fkey = cls.module + "." + cls.name;
 		var packName = (cls.pack.length > 0 ? cls.pack.join(".") + "." : "") + cls.name;
 
-		var alreadyProcessed_metadata = cls.meta.get().find(function(m) return m.name == ':usingProcessed');
-		if (alreadyProcessed_metadata != null)
+		if(cls.meta.get().find(function(m) return m.name == ':usingProcessed') != null) return fields;
+		if (Config.DISALLOW_USING.contains(key) || Config.DISALLOW_USING.contains(fkey) || Config.DISALLOW_USING.contains(packName))
 			return fields;
 
 		var entryField = cls.meta.get().find(function(m) return m.name == ':usableEntry');
@@ -71,23 +75,15 @@ class UsingMacro {
 		var data: Array<Array<String>> = [];
 
 		for (field in fields) {
-			/*
-			if (field.meta.find(function(m) return m.name == ':noUsing') != null)
-				continue;
-			if (field.meta.find(function(m) return m.name == ':noUse') != null)
-				continue;
-			*/
 			// functions marked with @:noUsing won't be able to be used by variables
 			// also if you want it to be usable in source, but not in the script, use @:noUse
 			for(m in field.meta) 
 				if(unallowedMetas.contains(m.name))
 					continue;
 
+			// It's called "static extensions" for some reason
 			if(!field.access.contains(AStatic))
 				continue;
-
-			// if (field.isPublic == false)
-			//	continue;
 
 			switch (field.kind) {
 				default:
@@ -120,21 +116,23 @@ class UsingMacro {
 							"TClass(null)"; // this feels wrong
 						case TPath({name: "Enum", pack: []}):
 							"TEnum(null)";
-						case TPath({name: "Null", pack: []}):
-							"TUnknown";
 						// case TPath({name: "Void", pack: []}): "ValueType.TVoid";
 						default:
 							null; // null acts as a wildcard
 					}
 
-					// MIGHT CRASH COMPILATION?
+					// MIGHT CRASH COMPILATION? YEAH, IT CRASH ON TYPE PARAMETERS
 					if (!onlyBasic && valueType == null) {
-						var rtype = type.toType();
+						var rtype:haxe.macro.Type = null;
 
-						switch (rtype) {
-							case TInst(t, []):
-								valueType = "TClass(" + t.toString() + ")";
-							default:
+						try {rtype = type.toType();} catch(e) {}
+
+						if(rtype != null) {
+							switch (rtype) {
+								case TInst(t, []):
+									valueType = "TClass(" + t.toString() + ")";
+								default:
+							}
 						}
 					}
 

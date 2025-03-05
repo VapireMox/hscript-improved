@@ -86,6 +86,11 @@ class Parser {
 	**/
 	public var resumeErrors : Bool;
 
+	/*
+		package name, set when using "package;" in your script.
+	 */
+	public var packageName:String = null;
+
 	// implementation
 	var input : String;
 	var readPos : Int;
@@ -905,6 +910,18 @@ class Parser {
 			var tk = token();
 			push(tk);
 			mk(EFunction(inf.args, inf.body, name, inf.ret, nextIsPublic, nextIsStatic, nextIsOverride, nextIsPrivate, nextIsFinal, nextIsInline),p1,pmax(inf.body));
+		case "package":
+			// ignore package
+			var tk = token();
+			push(tk);
+			packageName = "";
+			if (tk == TSemicolon)
+				return mk(EIgnore(false));
+
+			var path = parsePath();
+			// mk(EPackage(path.join(".")));
+			packageName = path.join(".");
+			mk(EIgnore(false));
 		case "import":
 			var oldReadPos = readPos;
 			var tk = token();
