@@ -468,6 +468,11 @@ class Interp {
 				}
 			}
 		}
+
+		if(Type.resolveClass(id) != null) {
+			return Type.resolveClass(id);
+		}
+
 		if (doException)
 			error(EUnknownVariable(id));
 		return v;
