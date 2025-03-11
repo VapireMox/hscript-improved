@@ -80,7 +80,7 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 
 class TemplateClass implements IHScriptCustomBehaviour {
 	public var __interp:Interp;
-	public var clName:String = Type.getClassName(Type.getClass(this));
+	public var clName:String = 'TemplateClass';
 
 	public function hset(name:String, val:Dynamic):Dynamic {
 		if(this.__interp.variables.exists("set_" + name)) {
