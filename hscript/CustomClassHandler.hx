@@ -29,6 +29,8 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 			ogInterp.error(EInvalidClass(extend));
 
 		var _class = Type.createInstance(cl, args);
+		if(extend == null)
+			_class.clName = name;
 
 		var __capturedLocals = ogInterp.duplicate(ogInterp.locals);
 		var capturedLocals:Map<String, {r:Dynamic, depth:Int}> = [];
@@ -72,12 +74,13 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 	}
 
 	public function toString():String {
-		return name;
+		return 'HScriptCustomClass<$name' + (extend != null ? '(${extend}_HSX)>' : '>');
 	}
 }
 
 class TemplateClass implements IHScriptCustomBehaviour {
 	public var __interp:Interp;
+	public var clName:String = Type.getClassName(Type.getClass(this));
 
 	public function hset(name:String, val:Dynamic):Dynamic {
 		if(this.__interp.variables.exists("set_" + name)) {
@@ -96,6 +99,12 @@ class TemplateClass implements IHScriptCustomBehaviour {
 		if (this.__interp.variables.exists(name))
 			return this.__interp.variables.get(name);
 		return Reflect.getProperty(this, name);
+	}
+	
+	public function toString():String {
+		if(this.__interp.variables.exists("toString") && Reflect.isFunction(this.__interp.variables.get("toString"))) {
+			return this.__interp.variables.get("toString")();
+		}else return clName;
 	}
 }
 
