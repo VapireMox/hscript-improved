@@ -1,5 +1,6 @@
 package hscript;
 
+@:allow(hscript.CustomClassHandler)
 class CustomClassInterp extends Interp {
 	private var customClassHandler:CustomClassHandler = null;
 
