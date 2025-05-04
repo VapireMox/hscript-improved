@@ -16,7 +16,7 @@ class CustomClassInterp extends Interp {
 			} else if ((Type.typeof(scriptObject) == TObject) && Reflect.hasField(scriptObject, id)) {
 				return Reflect.field(scriptObject, id);
 			}else if(scriptObject is IHScriptCustomBehaviour) {
-				return cast(scriptObject, IHScriptCustomBehaviour).hget(id);
+				if(variables.exists(id)) return cast(scriptObject, IHScriptCustomBehaviour).hget(id);
 			} else {
 				if (__instanceFields.contains(id)) {
 					return Reflect.getProperty(scriptObject, id);
@@ -30,7 +30,10 @@ class CustomClassInterp extends Interp {
 			if(staticVariables.exists(id)) return customClassHandler.hget(id);
 		}
 
-		var v = variables.get(id);
+		var l = locals.get(id);
+		if (l != null)
+			return l.r;
+
 		for(map in [variables, customClasses])
 			if (map.exists(id))
 				return map[id];
@@ -39,13 +42,9 @@ class CustomClassInterp extends Interp {
 			return Type.resolveClass(id);
 		}
 
-		var l = locals.get(id);
-		if (l != null)
-			return l.r;
-
 		if (doException)
 			error(EUnknownVariable(id));
-		return v;
+		return null;
 	}
 
 	override function setVar(name:String, v:Dynamic) {

@@ -65,11 +65,6 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 		}
 
 		fieldsInterp(interp, fields);
-		for(key => value in interp.locals) {
-			if(value.depth == 0) {
-				interp.locals.remove(key);
-			}
-		}
 
 		interp.variables.set("super", staticHandler);
 		interp.customClasses = ogInterp.customClasses;
