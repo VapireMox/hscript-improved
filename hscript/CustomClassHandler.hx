@@ -2,7 +2,7 @@ package hscript;
 
 using StringTools;
 
-class CustomClassHandler implements IHScriptCustomConstructor {
+class CustomClassHandler implements IHScriptCustomConstructor implements IHScriptCustomBehaviour {
 	public static var staticHandler = new StaticHandler();
 
 	public var ogInterp:Interp;
@@ -11,16 +11,26 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 	public var extend:String;
 	public var interfaces:Array<String>;
 
+	var staticVariables(default, null):Map<String, Dynamic> = new Map<String, Dynamic>();
+
 	public function new(ogInterp:Interp, name:String, fields:Array<Expr>, ?extend:String, ?interfaces:Array<String>) {
 		this.ogInterp = ogInterp;
 		this.name = name;
 		this.fields = fields;
 		this.extend = extend;
 		this.interfaces = interfaces;
+
+		var interp:Interp = new Interp();
+		interp.allowStaticVariables = true;
+		interp.errorHandler = ogInterp.errorHandler;
+		fieldsInterp(interp, fields);
+
+		staticVariables = interp.staticVariables;
 	}
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
 		var interp = new Interp();
+		//防止修饰有static的变量在实例化中被读取
 		interp.allowStaticVariables = true;
 
 		interp.errorHandler = ogInterp.errorHandler;
@@ -52,10 +62,7 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 			}
 		}
 
-		for(expr in fields) {
-			@:privateAccess
-			interp.exprReturn(expr);
-		}
+		fieldsInterp(interp, fields);
 
 		interp.variables.set("super", staticHandler);
 
@@ -72,6 +79,38 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 		}
 
 		return _class;
+	}
+	
+	public function hset(name:String, val:Dynamic):Dynamic {
+		if(!staticVariables.exists(name)) {
+			ogInterp.error(EInvalidAccess(name));
+			return null;
+		}
+
+		if(this.__interp.variables.exists("set_" + name) && Reflect.isFunction(this.__interp.variables.get("set_" + name)))
+			return this.__interp.variables.get("set_" + name)(val);
+
+		this.__interp.variables.set(name, val);
+		return val;
+	}
+
+	public function hget(name:String):Dynamic {
+		if(!staticVariables.exists(name)) {
+			ogInterp.error(EInvalidAccess(name));
+			return null;
+		}
+
+		if(this.__interp.variables.exists("get_" + name) && Reflect.isFunction(this.__interp.variables.get("get_" + name)))
+			return this.__interp.variables.get("get_" + name)();
+
+		return this.__interp.variables.get(name);
+	}
+
+	private function fieldsInterp(interp:Interp, ?fields:Array<Expr>):Interp {
+		for(expr in fields) {
+			@:privateAccess
+			interp.exprReturn(expr);
+		}
 	}
 
 	public function toString():String {
