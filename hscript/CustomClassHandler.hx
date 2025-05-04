@@ -21,6 +21,7 @@ class CustomClassHandler implements IHScriptCustomConstructor {
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
 		var interp = new Interp();
+		interp.allowStaticVariables = true;
 
 		interp.errorHandler = ogInterp.errorHandler;
 
