@@ -52,6 +52,15 @@ class ClassExtendMacro {
 
 			var key = cl.module;
 			var fkey = cl.module + "." + cl.name;
+
+			//我是没见过自家人偷自家的……
+			for(sb in cl.interfaces) {
+				final inte = sb.t.get();
+				if(inte.name == "IHScriptCustomBehaviour" || inte.name == "IHScriptCustomConstructor") {
+					return fields;
+				}
+			}
+
 			if(key == "sys.thread.FixedThreadPool") return fields; // Error: Type name sys.thread.Worker_HSX is redefined from module sys.thread.FixedThreadPool
 			if(key == "StdTypes") return fields; // Error: Cant extend basic class
 			if(key == "Xml") return fields; // Error: Cant extend basic class
@@ -59,7 +68,6 @@ class ClassExtendMacro {
 			if(key == "away3d.tools.commands.Mirror") return fields; // Error: Unknown identifier
 			if(key == "away3d.tools.commands.SphereMaker") return fields; // Error: Unknown identifier
 			if(key == "away3d.tools.commands.Weld") return fields; // Error: Unknown identifier
-			if(fkey == "hscript.CustomClassHandler.TemplateClass") return fields; // Error: Redefined
 			if(key == "sys.thread.EventLoop") return fields; // Error: cant override force inlined
 			if(Config.DISALLOW_CUSTOM_CLASSES.contains(cl.module) || Config.DISALLOW_CUSTOM_CLASSES.contains(fkey)) return fields;
 			if(cl.module.contains("_")) return fields; // Weird issue, sorry
@@ -285,18 +293,8 @@ class ClassExtendMacro {
 				}))
 			});
 
-			// Todo: make it possible to override
-			if(cl.name == "FunkinShader" || cl.name == "CustomShader" || cl.name == "MultiThreadedScript") {
-				Context.defineModule(cl.module, [shadowClass], imports);
-				return fields;
-			}
-
 			var hasHgetInSuper = false;
 			var hasHsetInSuper = false;
-
-			if(cl.name == "CustomShader") {
-				hasHgetInSuper = hasHsetInSuper = true;
-			}
 
 			// TODO: somehow check the super super class
 			for(_field in [fields.copy(), superFields.copy()])

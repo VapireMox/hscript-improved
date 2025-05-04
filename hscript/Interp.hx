@@ -469,7 +469,8 @@ class Interp {
 			}
 		}
 
-		if(Type.resolveClass(id) != null) {
+		final cl:Class<Dynamic> = Type.resolveClass(id);
+		if(cl != null) {
 			return Type.resolveClass(id);
 		}
 

@@ -41,7 +41,8 @@ class CustomClassInterp extends Interp {
 			if (map.exists(id))
 				return map[id];
 
-		if(Type.resolveClass(id) != null) {
+		final cl:Class<Dynamic> = Type.resolveClass(id);
+		if(cl != null) {
 			return Type.resolveClass(id);
 		}
 
