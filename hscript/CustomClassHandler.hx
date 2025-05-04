@@ -87,10 +87,10 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 			return null;
 		}
 
-		if(this.__interp.variables.exists("set_" + name) && Reflect.isFunction(this.__interp.variables.get("set_" + name)))
-			return this.__interp.variables.get("set_" + name)(val);
+		if(staticVariables.exists("set_" + name) && Reflect.isFunction(staticVariables.get("set_" + name)))
+			return staticVariables.get("set_" + name)(val);
 
-		this.__interp.variables.set(name, val);
+		staticVariables.set(name, val);
 		return val;
 	}
 
@@ -100,10 +100,10 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 			return null;
 		}
 
-		if(this.__interp.variables.exists("get_" + name) && Reflect.isFunction(this.__interp.variables.get("get_" + name)))
-			return this.__interp.variables.get("get_" + name)();
+		if(staticVariables.exists("get_" + name) && Reflect.isFunction(staticVariables.get("get_" + name)))
+			return staticVariables.get("get_" + name)();
 
-		return this.__interp.variables.get(name);
+		return staticVariables.get(name);
 	}
 
 	private function fieldsInterp(interp:Interp, ?fields:Array<Expr>):Interp {
@@ -111,6 +111,8 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 			@:privateAccess
 			interp.exprReturn(expr);
 		}
+		
+		return interp;
 	}
 
 	public function toString():String {
