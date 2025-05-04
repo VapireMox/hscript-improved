@@ -281,7 +281,7 @@ class ClassExtendMacro {
 				pos: Context.currentPos(),
 				kind: FVar(TPath({
 					pack: ['hscript'],
-					name: 'Interp'
+					name: 'CustomClassInterp'
 				}))
 			});
 

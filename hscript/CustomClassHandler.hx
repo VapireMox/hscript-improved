@@ -20,7 +20,8 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 		this.extend = extend;
 		this.interfaces = interfaces;
 
-		var interp:Interp = new Interp();
+		var interp:CustomClassInterp = new CustomClassInterp();
+		interp.customClassHandler = this;
 		interp.allowStaticVariables = true;
 		interp.errorHandler = ogInterp.errorHandler;
 		fieldsInterp(interp, fields);
@@ -29,7 +30,8 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 	}
 
 	public function hnew(args:Array<Dynamic>):Dynamic {
-		var interp = new Interp();
+		var interp = new CustomClassInterp();
+		interp.customClassHandler = this;
 		//防止修饰有static的变量在实例化中被读取
 		interp.allowStaticVariables = true;
 
@@ -63,8 +65,14 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 		}
 
 		fieldsInterp(interp, fields);
+		for(key => value in interp.locals) {
+			if(value.depth == 0) {
+				interp.locals.remove(key);
+			}
+		}
 
 		interp.variables.set("super", staticHandler);
+		interp.customClasses = ogInterp.customClasses;
 
 		_class.__interp = interp;
 		interp.scriptObject = _class;
@@ -106,7 +114,7 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 		return staticVariables.get(name);
 	}
 
-	private function fieldsInterp(interp:Interp, ?fields:Array<Expr>):Interp {
+	private function fieldsInterp(interp:CustomClassInterp, ?fields:Array<Expr>):CustomClassInterp {
 		for(expr in fields) {
 			@:privateAccess
 			interp.exprReturn(expr);
@@ -121,7 +129,7 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 }
 
 class TemplateClass implements IHScriptCustomBehaviour {
-	public var __interp:Interp;
+	public var __interp:CustomClassInterp;
 	public var clName:String = 'TemplateClass';
 
 	public function hset(name:String, val:Dynamic):Dynamic {
