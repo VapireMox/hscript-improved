@@ -9,6 +9,10 @@ class CustomClassInterp extends Interp {
 			return null;
 		id = StringTools.trim(id);
 
+		var l = locals.get(id);
+		if (l != null && l.depth > 0)
+			return l.r;
+
 		if (scriptObject != null) {
 			// search in object
 			if (id == "this") {
@@ -30,7 +34,6 @@ class CustomClassInterp extends Interp {
 			if(staticVariables.exists(id)) return customClassHandler.hget(id);
 		}
 
-		var l = locals.get(id);
 		if (l != null)
 			return l.r;
 
