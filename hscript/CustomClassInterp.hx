@@ -72,12 +72,11 @@ class CustomClassInterp extends Interp {
 	}
 
 	override function expr(e:Expr) {
-		#if hscriptPos
-		curExpr = e;
-		var e = e.e;
-		#end
-
 		if(onlyParseStatic) {
+			#if hscriptPos
+			curExpr = e;
+			var e = e.e;
+			#end
 			switch(e) {
 				case EVar(n, _, e, isPublic, isStatic):
 					declared.push({n: n, old: locals.get(n), depth: depth});
