@@ -2,6 +2,8 @@ package hscript;
 
 @:allow(hscript.CustomClassHandler)
 class CustomClassInterp extends Interp {
+	private var onlyParseStatic:Bool = false;
+
 	private var customClassHandler:CustomClassHandler = null;
 
 	override function resolve(id:String, doException:Bool = true):Dynamic {
@@ -67,5 +69,31 @@ class CustomClassInterp extends Interp {
 		}
 
 		variables.set(name, v);
+	}
+
+	override function expr(e:Expr) {
+		#if hscriptPos
+		curExpr = e;
+		var e = e.e;
+		#end
+
+		if(onlyParseStatic) {
+			switch(e) {
+				case EVar(n, _, e, isPublic, isStatic):
+					declared.push({n: n, old: locals.get(n), depth: depth});
+					if(depth == 0) {
+						if(isStatic == true) {
+							locals.set(n, {r: (e == null) ? null : expr(e), depth: depth});
+							if(!staticVariables.exists(n)) {
+								staticVariables.set(n, locals[n].r);
+							}
+							return null;
+						}
+					}
+				default:
+			}
+		}
+
+		return super.expr(e);
 	}
 }

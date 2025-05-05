@@ -22,7 +22,7 @@ class CustomClassHandler implements IHScriptCustomConstructor implements IHScrip
 
 		var interp:CustomClassInterp = new CustomClassInterp();
 		interp.customClassHandler = this;
-		interp.allowStaticVariables = true;
+		interp.allowStaticVariables = interp.onlyParseStatic = true;
 		interp.errorHandler = ogInterp.errorHandler;
 		fieldsInterp(interp, fields);
 
