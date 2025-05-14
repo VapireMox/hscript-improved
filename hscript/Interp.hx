@@ -193,6 +193,7 @@ class Interp {
 		publicVariables = new Map<String, Dynamic>();
 		staticVariables = new Map<String, Dynamic>();
 		allowStaticAccessClasses = new Array<String>();
+		customEnums = new Map<String, HScriptEnum>();
 		variables.set("null", null);
 		variables.set("true", true);
 		variables.set("false", false);
