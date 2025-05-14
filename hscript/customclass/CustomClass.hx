@@ -55,6 +55,8 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 		this.__class = __class;
 		this.interp = new Interp(this);
 
+		this.interp.customEnums = this.__class.staticInterp.customEnums;
+		this.interp.allowStaticAccessClasses = this.__class.staticInterp.allowStaticAccessClasses;
 		if (ogInterp != null) {
 			interp.importFailedCallback = ogInterp.importFailedCallback;
 			interp.errorHandler = ogInterp.errorHandler;

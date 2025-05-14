@@ -141,6 +141,8 @@ class Interp {
 	public var variables:Map<String, Dynamic>;
 	public var publicVariables:Map<String, Dynamic>;
 	public var staticVariables:Map<String, Dynamic>;
+	public var allowStaticAccessClasses:Array<String>;
+	public var customEnums:Map<String, HScriptEnum>;
 
 	// warning can be null
 	public var locals:Map<String, DeclaredVar>;
@@ -190,6 +192,7 @@ class Interp {
 		variables = new Map<String, Dynamic>();
 		publicVariables = new Map<String, Dynamic>();
 		staticVariables = new Map<String, Dynamic>();
+		allowStaticAccessClasses = new Array<String>();
 		variables.set("null", null);
 		variables.set("true", true);
 		variables.set("false", false);
@@ -759,8 +762,10 @@ class Interp {
 			return publicVariables.get(id);
 		if(staticVariables.exists(id))
 			return staticVariables.get(id);
-		if(customClassExist(id))
+		if(customClassExist(id) && allowStaticAccessClasses.contains(id))
 			return getCustomClass(id);
+		if(customEnums.exists(id))
+			return customEnums.get(id);
 
 		// Custom Class
 		if (_inCustomClass) {
@@ -964,6 +969,7 @@ class Interp {
 				};
 
 				registerCustomClass(customClassDecl, null);
+				allowStaticAccessClasses.push(customClassDecl.classDecl.name);
 				localParsedClasses.push(customClassDecl.classDecl.name);
 			case EImport(c, n):
 				if (!importEnabled)
@@ -1501,7 +1507,7 @@ class Interp {
 							obj.setEnum(name, f);
 					}
 				}
-				variables.set(enumName, obj);
+				customEnums.set(enumName, obj);
 		}
 		return null;
 	}
@@ -1971,14 +1977,14 @@ class Interp {
 
 	function cnew(cl:String, args:Array<Dynamic>):Dynamic {
 		// Custom Class
-		if (customClassExist(cl)) {
+		if (customClassExist(cl) && allowStaticAccessClasses.contains(cl)) {
 			var proxy:CustomClass = new CustomClass(getCustomClass(cl), args, null, this);
 			return proxy;
 		}
 		if (_inCustomClass) {
 			if (_proxy.__class.pkg != null) {
 				var packagedClass = _proxy.__class.pkg.join(".") + "." + cl;
-				if (customClassExist(packagedClass)) {
+				if (customClassExist(packagedClass) && allowStaticAccessClasses.contains(packagedClass)) {
 					var proxy:CustomClass = new CustomClass(getCustomClass(cl), args, null, this);
 					return proxy;
 				}
@@ -1986,7 +1992,7 @@ class Interp {
 
 			if (_proxy.__class.imports != null && _proxy.__class.imports.exists(cl)) {
 				var importedClass = _proxy.__class.imports.get(cl).fullPath;
-				if (customClassExist(importedClass)) {
+				if (customClassExist(importedClass) && allowStaticAccessClasses.contains(importedClass)) {
 					var proxy:CustomClass = new CustomClass(getCustomClass(cl), args, null, this);
 					return proxy;
 				}
@@ -2084,6 +2090,7 @@ class Interp {
 					}
 					//customClassDecl.cacheFields();
 					registerCustomClass(customClassDecl, !regAlias ? as : null, _inCustomClass);
+					allowStaticAccessClasses.push(!regAlias ? as : (customClassDecl.pkg != null && (_inCustomClass != null && _inCustomClass) ? '${customClassDecl.pkg.join(".")}.${customClassDecl.classDecl.name}' : customClassDecl.classDecl.name));
 					if(as != null) regAlias = true;
 			}
 		}

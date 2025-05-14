@@ -43,6 +43,8 @@ class CustomClassDecl implements IHScriptCustomAccessBehaviour {
 
 		if(ogInterp != null) {
 			staticInterp.importFailedCallback = ogInterp.importFailedCallback;
+			staticInterp.customEnums = ogInterp.customEnums;
+			staticInterp.allowStaticAccessClasses = ogInterp.allowStaticAccessClasses;
 			staticInterp.errorHandler = ogInterp.errorHandler;
 			staticInterp.allowStaticVariables = ogInterp.allowStaticVariables;
 			staticInterp.staticVariables = ogInterp.staticVariables;
