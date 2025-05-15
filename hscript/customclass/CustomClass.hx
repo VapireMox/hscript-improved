@@ -44,6 +44,7 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 	private var __cachedFunctionDecls:Map<String, FunctionDecl> = [];
 	private var __cachedVarDecls:Map<String, VarDecl> = [];
 
+	public var accessContext:AccessContext = COuter;
 	public var __allowSetGet:Bool = false;
 	public var __allowPrivateAccess:Bool = false;
 
@@ -347,10 +348,14 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 				if (hasVar(name)) {
 					var v = getVar(name);
 					var getter = v.get;
+					var isInner = switch (accessContext) {
+						case CInner(cl): return cl == this.className;
+						default: false;
+					}
 					
 					var value:Dynamic = null;
 
-					if(getter == ANever || getter == ANull && !__allowPrivateAccess)
+					if(getter == ANever || getter == ANull && (!isInner || !__allowPrivateAccess))
 						throw 'field $name cannot be accessed for reading';
 
 					if (__allowSetGet && getter == AGet) {
@@ -373,6 +378,7 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 
 				if (this.superClass != null) {
 					if (superHasField(name)) {
+						// Anonymous structure as a super class??? 
 						if (Type.getClass(this.superClass) == null) {
 							// Anonymous structure
 							if (Reflect.hasField(this.superClass, name))
@@ -386,6 +392,10 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 
 							superCustomClass.__allowSetGet = this.__allowSetGet;
 							superCustomClass.__allowPrivateAccess = this.__allowPrivateAccess;
+							superCustomClass.accessContext = switch (accessContext) {
+								case CInner(_): CInner(superCustomClass.className);
+								default: COuter;
+							}
 							return superCustomClass.hget(name);
 						}
 
@@ -410,8 +420,12 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 				if (hasVar(name)) {
 					var v = getVar(name);
 					var setter = v.set;
+					var isInner = switch (accessContext) {
+						case CInner(cl): return cl == this.className;
+						default: false;
+					}
 
-					if (setter == ANever || setter == ANull && !__allowPrivateAccess || (v.isFinal && !initializing))
+					if (setter == ANever || setter == ANull && (!isInner || !__allowPrivateAccess) || (v.isFinal && !initializing))
 						throw 'field $name cannot be accessed for writing';
 
 					if (__allowSetGet && setter == ASet) {
@@ -440,6 +454,10 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 
 							superCustomClass.__allowSetGet = this.__allowSetGet;
 							superCustomClass.__allowPrivateAccess = this.__allowPrivateAccess;
+							superCustomClass.accessContext = switch (accessContext) {
+								case CInner(_): CInner(superCustomClass.className);
+								default: COuter;
+							}
 							return superCustomClass.hset(name, val);
 						}
 						// Real Class
