@@ -71,6 +71,13 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 			}
 		}
 
+		if(ogVariables != null) {
+			if(isInline) {
+				for(s => v in ogVariables)
+					interp.variables.set(s, v);
+			}
+		}
+
 		buildImports();
 		buildUsings();
 
@@ -157,12 +164,6 @@ class CustomClass implements IHScriptCustomAccessBehaviour {
 			superClass = Type.createInstance(__class.superClassDecl, args);
 			superClass.__customClass = this;
 			superClass.__real_fields = disallowCopy;
-
-			if(isInline) {
-				for(s => v in ogVariables)
-					if(!disallowCopy.contains(s))
-						interp.variables.set(s, v);
-			}
 		}
 	}
 

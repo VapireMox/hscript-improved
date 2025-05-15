@@ -2091,7 +2091,7 @@ class Interp {
 					}
 					//customClassDecl.cacheFields();
 					registerCustomClass(customClassDecl, !regAlias ? as : null, _inCustomClass);
-					allowStaticAccessClasses.push(!regAlias ? as : (customClassDecl.pkg != null && (_inCustomClass != null && _inCustomClass) ? '${customClassDecl.pkg.join(".")}.${customClassDecl.classDecl.name}' : customClassDecl.classDecl.name));
+					allowStaticAccessClasses.push(!regAlias ? as : (customClassDecl.pkg != null && (_inCustomClass) ? '${customClassDecl.pkg.join(".")}.' : '') + customClassDecl.classDecl.name);
 					if(as != null) regAlias = true;
 			}
 		}
